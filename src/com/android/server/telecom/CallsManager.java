@@ -77,6 +77,7 @@ public final class CallsManager extends Call.ListenerBase {
         void onIsConferencedChanged(Call call);
         void onIsVoipAudioModeChanged(Call call);
         void onVideoStateChanged(Call call);
+        void onCallSubstateChanged(Call call);
     }
 
     /**
@@ -312,6 +313,13 @@ public final class CallsManager extends Call.ListenerBase {
         }
     }
 
+    @Override
+    public void onCallSubstateChanged(Call call) {
+        for (CallsManagerListener listener : mListeners) {
+            listener.onCallSubstateChanged(call);
+        }
+    }
+
     ImmutableCollection<Call> getCalls() {
         return ImmutableList.copyOf(mCalls);
     }
@@ -450,6 +458,13 @@ public final class CallsManager extends Call.ListenerBase {
             PhoneAccountHandle defaultAccountHandle =
                     mPhoneAccountRegistrar.getDefaultOutgoingPhoneAccount(
                             scheme);
+            TelephonyManager.MultiSimVariants msimConfig =
+                    TelephonyManager.getDefault().getMultiSimConfiguration();
+            if (((msimConfig == TelephonyManager.MultiSimVariants.DSDS) ||
+                    (msimConfig == TelephonyManager.MultiSimVariants.TSTS)) &&
+                    (mForegroundCall != null) && (mForegroundCall.isAlive())) {
+                defaultAccountHandle = mForegroundCall.getTargetPhoneAccount();
+            }
             if (defaultAccountHandle != null) {
                 phoneAccountHandle = defaultAccountHandle;
             }
@@ -1585,7 +1600,8 @@ public final class CallsManager extends Call.ListenerBase {
                     && !phAcc.isSet(PhoneAccount.ACTIVE)) {
                 changed = true;
                 phAcc.setBit(PhoneAccount.ACTIVE);
-            } else if (phAcc.isSet(PhoneAccount.ACTIVE)) {
+            } else if (subId != null && !subId.equals(ph.getId())
+                        && phAcc.isSet(PhoneAccount.ACTIVE)) {
                 changed = true;
                 phAcc.unSetBit(PhoneAccount.ACTIVE);
             }
