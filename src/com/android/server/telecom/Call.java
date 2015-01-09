@@ -346,7 +346,7 @@ final class Call implements CreateConnectionResponse {
         maybeLoadCannedSmsResponses();
     }
 
-     /**
+    /**
      * Persists the specified parameters and initializes the new instance.
      *
      * @param context The context.
@@ -370,11 +370,11 @@ final class Call implements CreateConnectionResponse {
             PhoneAccountHandle targetPhoneAccountHandle,
             boolean isIncoming,
             boolean isConference,
-            long oldConnectTimeMillis) {
+            long connectTimeMillis) {
         this(context, repository, handle, gatewayInfo, connectionManagerPhoneAccountHandle,
                 targetPhoneAccountHandle, isIncoming, isConference);
 
-        mConnectTimeMillis = oldConnectTimeMillis;
+        mConnectTimeMillis = connectTimeMillis;
     }
 
     void addListener(Listener listener) {

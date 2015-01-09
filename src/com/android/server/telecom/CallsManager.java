@@ -27,6 +27,7 @@ import android.os.SystemProperties;
 import android.provider.CallLog.Calls;
 import android.telecom.AudioState;
 import android.telecom.CallState;
+import android.telecom.Conference;
 import android.telecom.Connection;
 import android.telecom.DisconnectCause;
 import android.telecom.GatewayInfo;
@@ -1265,7 +1266,14 @@ public final class CallsManager extends Call.ListenerBase {
     Call createConferenceCall(
             PhoneAccountHandle phoneAccount,
             ParcelableConference parcelableConference) {
-        long oldConnectTime = parcelableConference.getConnectTimeMillis();
+
+        // If the parceled conference specifies a connect time, use it; otherwise default to 0,
+        // which is the default value for new Calls.
+        long connectTime =
+                parcelableConference.getConnectTimeMillis() ==
+                        Conference.CONNECT_TIME_NOT_SPECIFIED ? 0 :
+                        parcelableConference.getConnectTimeMillis();
+
         Call call = new Call(
                 mContext,
                 mConnectionServiceRepository,
@@ -1275,10 +1283,10 @@ public final class CallsManager extends Call.ListenerBase {
                 phoneAccount,
                 false /* isIncoming */,
                 true /* isConference */,
-                oldConnectTime);
+                connectTime);
 
         setCallState(call, Call.getStateFromConnectionState(parcelableConference.getState()));
-        if (oldConnectTime == 0 && call.getState() == CallState.ACTIVE) {
+        if (connectTime == 0 && call.getState() == CallState.ACTIVE) {
             call.setConnectTimeMillis(System.currentTimeMillis());
         }
         call.setConnectionCapabilities(parcelableConference.getConnectionCapabilities());
