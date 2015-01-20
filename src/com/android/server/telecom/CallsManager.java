@@ -900,16 +900,28 @@ public final class CallsManager extends Call.ListenerBase {
      */
     void markCallAsDisconnected(Call call, DisconnectCause disconnectCause) {
         call.setDisconnectCause(disconnectCause);
+        int prevState = call.getState();
         setCallState(call, CallState.DISCONNECTED);
+        String activeSub = getActiveSubscription();
+        String conversationSub = getConversationSub();
+        String lchSub = IsAnySubInLch();
+
         PhoneAccount phAcc =
                  getPhoneAccountRegistrar().getPhoneAccount(call.getTargetPhoneAccount());
         if ((call.getTargetPhoneAccount() != null &&
-                    call.getTargetPhoneAccount().getId().equals(getActiveSubscription())) &&
+                    call.getTargetPhoneAccount().getId().equals(activeSub)) &&
                     (phAcc != null) && (phAcc.isSet(PhoneAccount.LCH)) &&
-                    (getConversationSub() != null) &&
-                    (!getConversationSub().equals(getActiveSubscription()))) {
+                    (conversationSub != null) &&
+                    (!conversationSub.equals(activeSub))) {
             Log.d(this,"Set active sub to conversation sub");
-            setActiveSubscription(getConversationSub());
+            setActiveSubscription(conversationSub);
+        } else if ((conversationSub == null) && (lchSub != null) &&
+                ((prevState == CallState.CONNECTING) || (prevState == CallState.PRE_DIAL_WAIT)) &&
+                (call.getState() == CallState.DISCONNECTED)) {
+            Log.d(this,"remove sub with call from LCH");
+            updateLchStatus(lchSub);
+            setActiveSubscription(lchSub);
+            manageMSimInCallTones(false);
         }
 
         if ((call.getTargetPhoneAccount() != null) && (phAcc != null) &&
@@ -929,6 +941,16 @@ public final class CallsManager extends Call.ListenerBase {
             setActiveSubscription(null);
             manageMSimInCallTones(false);
         }
+    }
+
+    private String IsAnySubInLch() {
+        for (PhoneAccountHandle ph : getPhoneAccountRegistrar().getCallCapablePhoneAccounts()) {
+            if (getPhoneAccountRegistrar().getPhoneAccount(ph).isSet(PhoneAccount.LCH)) {
+                Log.d(this, "Sub in LCH: " + ph.getId());
+                return ph.getId();
+            }
+        }
+        return null;
     }
 
     /**
