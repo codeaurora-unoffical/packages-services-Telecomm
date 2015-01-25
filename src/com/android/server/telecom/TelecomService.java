@@ -448,10 +448,7 @@ public class TelecomService extends Service {
                     return false;
                 }
 
-                int subId = SubscriptionManager.getDefaultVoiceSubId();
-                if (accountHandle != null) {
-                    subId = mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(accountHandle);
-                }
+                int subId = mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(accountHandle);
                 return !TextUtils.isEmpty(getTelephonyManager().getVoiceMailNumber(subId));
             } catch (Exception e) {
                 Log.e(this, e, "getSubscriptionIdForPhoneAccount");
