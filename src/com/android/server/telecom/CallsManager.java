@@ -949,13 +949,6 @@ public final class CallsManager extends Call.ListenerBase {
                 manageMSimInCallTones(false);
             }
         }
-
-        removeCall(call);
-        if (!hasAnyCalls()) {
-            updateLchStatus(null);
-            setActiveSubscription(null);
-            manageMSimInCallTones(false);
-        }
     }
 
     /**
@@ -963,6 +956,11 @@ public final class CallsManager extends Call.ListenerBase {
      */
     void markCallAsRemoved(Call call) {
         removeCall(call);
+        if (!hasAnyCalls()) {
+            updateLchStatus(null);
+            setActiveSubscription(null);
+            manageMSimInCallTones(false);
+        }
         if (mLocallyDisconnectingCalls.contains(call)) {
             mLocallyDisconnectingCalls.remove(call);
             if (mForegroundCall != null && mForegroundCall.getState() == CallState.ON_HOLD) {
