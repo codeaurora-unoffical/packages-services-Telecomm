@@ -67,6 +67,14 @@ public class CallReceiver extends BroadcastReceiver {
             clientExtras = intent.getBundleExtra(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS);
         }
 
+        boolean isCsDomain = intent.getBooleanExtra(
+                TelephonyProperties.EXTRA_CALL_DOMAIN, false);
+        Log.d(TAG, "isCsDomain = " + isCsDomain);
+        if (isCsDomain) {
+            if (clientExtras == null) clientExtras = new Bundle();
+            clientExtras.putBoolean(TelephonyProperties.EXTRA_CALL_DOMAIN, isCsDomain);
+        }
+
         boolean isConferenceUri = intent.getBooleanExtra(
                 TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
         Log.d(TAG, "isConferenceUri = "+isConferenceUri);
