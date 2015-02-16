@@ -53,4 +53,6 @@
     <!-- Take reject call as missed call -->
     <bool name="reject_call_as_missed_call">false</bool>
 
+    <!-- By default emergency VT call is not supported -->
+    <bool name="config_enable_emergency_video_calling">false</bool>
 </resources>

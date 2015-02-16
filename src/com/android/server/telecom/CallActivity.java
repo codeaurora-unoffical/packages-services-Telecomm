@@ -148,7 +148,8 @@ public class CallActivity extends Activity {
                 VideoProfile.VideoState.AUDIO_ONLY);
         Log.d(this, "processOutgoingCallIntent videoState = " + videoState);
 
-        if (VideoProfile.VideoState.isVideo(videoState)
+        if (!isEmergencyVideoCallingSupported()
+                && VideoProfile.VideoState.isVideo(videoState)
                 && TelephonyUtil.shouldProcessAsEmergency(this, handle)) {
             Log.d(this, "Emergency call...Converting video call to voice...");
             videoState = VideoProfile.VideoState.AUDIO_ONLY;
@@ -196,6 +197,11 @@ public class CallActivity extends Activity {
                 getContentResolver(),
                 android.provider.Settings.Secure.PREFERRED_TTY_MODE,
                 TelecomManager.TTY_MODE_OFF) != TelecomManager.TTY_MODE_OFF);
+    }
+
+    private boolean isEmergencyVideoCallingSupported() {
+        return getApplicationContext().getResources().getBoolean(
+                R.bool.config_enable_emergency_video_calling);
     }
 
     private void processIncomingCallIntent(Intent intent) {
