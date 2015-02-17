@@ -32,13 +32,16 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.telecom.CallState;
 import android.telecom.PhoneAccount;
+import android.telecom.PhoneAccountHandle;
 import android.telecom.PhoneCapabilities;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.server.telecom.CallsManager.CallsManagerListener;
 
+import java.lang.NumberFormatException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -291,7 +294,20 @@ public final class BluetoothPhoneService extends Service {
                     try {
                         PhoneAccount account = getBestPhoneAccount();
                         if (account != null) {
-                            label = account.getLabel().toString();
+                            PhoneAccountHandle ph = account.getAccountHandle();
+                            if (ph != null) {
+                                String subId = ph.getId();
+                                Long sub = SubscriptionManager.getDefaultVoiceSubId();
+                                try {
+                                    sub = Long.parseLong(subId);
+                                } catch (NumberFormatException e){
+                                    Log.w(this, " NumberFormatException " + e);
+                                }
+                                label = TelephonyManager.from(BluetoothPhoneService.this)
+                                         .getNetworkOperatorName(sub);
+                            } else {
+                                Log.w(this, "Phone Account Handle is NULL");
+                            }
                         } else {
                             // Finally, just get the network name from telephony.
                             label = TelephonyManager.from(BluetoothPhoneService.this)
@@ -512,6 +528,8 @@ public final class BluetoothPhoneService extends Service {
         } else if (chld == CHLD_TYPE_HOLDACTIVE_ACCEPTHELD) {
             if (activeCall != null && activeCall.can(PhoneCapabilities.SWAP_CONFERENCE)) {
                 activeCall.swapConference();
+                Log.i(TAG, "CDMA calls in conference swapped, updating headset");
+                updateHeadsetWithCallState(true /* force */);
                 return true;
             } else if (ringingCall != null) {
                 callsManager.answerCall(ringingCall, 0);
@@ -704,7 +722,7 @@ public final class BluetoothPhoneService extends Service {
 
         int numActiveCalls = activeCall == null ? 0 : 1;
         int numHeldCalls = callsManager.getNumHeldCalls();
-
+        boolean callsSwitched = (numHeldCalls == 2);
         // For conference calls which support swapping the active call within the conference
         // (namely CDMA calls) we need to expose that as a held call in order for the BT device
         // to show "swap" and "merge" functionality.
@@ -736,7 +754,7 @@ public final class BluetoothPhoneService extends Service {
                  !TextUtils.equals(ringingAddress, mRingingAddress) ||
                  ringingAddressType != mRingingAddressType ||
                  (heldCall != mOldHeldCall && !ignoreHeldCallChange) ||
-                 force)) {
+                 force) && !callsSwitched) {
 
             // If the call is transitioning into the alerting state, send DIALING first.
             // Some devices expect to see a DIALING state prior to seeing an ALERTING state
