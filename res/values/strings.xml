@@ -88,6 +88,10 @@
     <!-- Message indicating video calls not allowed if user enabled TTY Mode -->
     <string name="video_call_not_allowed_if_tty_enabled">Please disable TTY Mode to make video calls.</string>
 
+    <!-- Message indicating video calls not allowed in case of low battery -->
+    <string name="video_call_not_allowed_due_to_low_battery">Low battery can\'t make or accept video call. Please charge the phone.</string>
+    <string name="video_call_not_allowed_for_low_battery">Low battery disconnecting active video calls. Please charge the phone.</string>
+
     <!-- missing voicemail number -->
     <!-- Title of the "Missing voicemail number" dialog -->
     <string name="no_vm_number">Missing voicemail number</string>
