@@ -18,7 +18,10 @@ package com.android.server.telecom;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.PhoneNumberUtils;
@@ -63,5 +66,24 @@ public final class TelephonyUtil {
     static boolean shouldProcessAsEmergency(Context context, Uri handle) {
         return handle != null && PhoneNumberUtils.isPotentialLocalEmergencyNumber(
                 context, handle.getSchemeSpecificPart());
+    }
+
+    static boolean isLowBatteryVideoCallSupported(Context context) {
+        return context.getResources().getBoolean(
+                com.android.internal.R.bool.config_low_battery_video_calling_supported);
+    }
+
+    static boolean isLowBattery(Context context) {
+        Intent batteryStatus = context.registerReceiver(null,
+                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+
+        final int batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        final int plugType = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 1);
+
+        final boolean isChargerPlugged = plugType != 0;
+        final int lowBatteryWarningLevel = context.getResources().getInteger(
+                com.android.internal.R.integer.config_lowBatteryWarningLevel);
+
+        return (batteryLevel <= lowBatteryWarningLevel && !isChargerPlugged);
     }
 }
