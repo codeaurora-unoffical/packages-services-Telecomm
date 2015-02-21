@@ -880,6 +880,17 @@ final class ConnectionServiceWrapper extends ServiceBinder<IConnectionService> {
         }
     }
 
+    void disconnectWithReason(Call call, int disconnectCause) {
+        final String callId = mCallIdMapper.getCallId(call);
+        if (callId != null && isServiceValid("disconnect")) {
+            try {
+                logOutgoing("disconnect %s", callId);
+                mServiceInterface.disconnectWithReason(callId, disconnectCause);
+            } catch (RemoteException e) {
+            }
+        }
+    }
+
     /** @see ConnectionService#answer(String,int) */
     void answer(Call call, int videoState) {
         final String callId = mCallIdMapper.getCallId(call);
@@ -915,6 +926,18 @@ final class ConnectionServiceWrapper extends ServiceBinder<IConnectionService> {
             try {
                 logOutgoing("reject %s", callId);
                 mServiceInterface.reject(callId);
+            } catch (RemoteException e) {
+            }
+        }
+    }
+
+    /** @see ConnectionService#rejectWithReason(String, int) */
+    void rejectWithReason(Call call, int disconnectCause) {
+        final String callId = mCallIdMapper.getCallId(call);
+        if (callId != null && isServiceValid("reject")) {
+            try {
+                logOutgoing("reject %s reason %d", callId, disconnectCause);
+                mServiceInterface.rejectWithReason(callId, disconnectCause);
             } catch (RemoteException e) {
             }
         }
