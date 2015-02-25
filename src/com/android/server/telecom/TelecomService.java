@@ -607,7 +607,7 @@ public class TelecomService extends Service {
             long token = Binder.clearCallingIdentity();
             String retval = "content://icc/adn/";
             try {
-                long subId = mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(accountHandle);
+                int subId = mPhoneAccountRegistrar.getSubscriptionIdForPhoneAccount(accountHandle);
                 retval = retval + "subId/" + subId;
             } finally {
                 Binder.restoreCallingIdentity(token);
@@ -684,6 +684,12 @@ public class TelecomService extends Service {
                         + " to add new unknown call.");
             }
         }
+
+        @Override
+        public int getActiveSubscription() { return 0; }
+
+        @Override
+        public void switchToOtherActiveSub(int subId) { }
     }
 
     //
