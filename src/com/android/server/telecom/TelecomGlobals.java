@@ -60,12 +60,6 @@ public final class TelecomGlobals {
      */
 
     private Context mContext;
-    /**
-     * Blacklist call notifier. Exists here so that the instance can be shared with
-     * {@link TelecomBroadcastReceiver}.
-    */
-    private BlacklistCallNotifier mBlacklistCallNotifier;
-
 
     private final BroadcastReceiver mUserSwitchedReceiver = new BroadcastReceiver() {
         @Override
@@ -91,9 +85,8 @@ public final class TelecomGlobals {
 
         mMissedCallNotifier = new MissedCallNotifier(mContext);
         mPhoneAccountRegistrar = new PhoneAccountRegistrar(mContext);
-        mBlacklistCallNotifier= new BlacklistCallNotifier(mContext);
-        mCallsManager = new CallsManager(mContext, mMissedCallNotifier,
-                mBlacklistCallNotifier, mPhoneAccountRegistrar);
+        mCallsManager = new CallsManager(mContext,
+                mMissedCallNotifier, mPhoneAccountRegistrar);
         CallsManager.initialize(mCallsManager);
         Log.i(this, "CallsManager initialized");
 
