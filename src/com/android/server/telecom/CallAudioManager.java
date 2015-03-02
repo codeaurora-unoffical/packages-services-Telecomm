@@ -144,7 +144,6 @@ int route = mAudioState.getRoute();
     @Override
     public void onWiredHeadsetPluggedInChanged(boolean oldIsPluggedIn, boolean newIsPluggedIn) {
         // This can happen even when there are no calls and we don't have focus.
-        int newRoute;
         if (!hasFocus()) {
             return;
         }
