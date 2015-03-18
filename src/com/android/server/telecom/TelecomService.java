@@ -702,10 +702,20 @@ public class TelecomService extends Service {
         }
 
         @Override
-        public long getActiveSubscription() { return 0; }
+        public int getActiveSubscription() {
+            enforceReadPermission();
+            String activeSub = mCallsManager.getActiveSubscription();
+            return (activeSub == null) ? SubscriptionManager.INVALID_SUBSCRIPTION_ID :
+                    Integer.parseInt(activeSub);
+        }
 
         @Override
-        public void switchToOtherActiveSub(long subId) { }
+        public void switchToOtherActiveSub(int subId) {
+            enforceModifyPermission();
+            String activeSub = (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                    ? null : String.valueOf(subId);
+            mCallsManager.switchToOtherActiveSub(activeSub, false);
+        }
 
         /**
          * Dumps the current state of the TelecomService.  Used when generating problem reports.
