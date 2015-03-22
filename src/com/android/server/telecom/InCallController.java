@@ -522,10 +522,7 @@ public final class InCallController extends CallsManagerListenerBase {
                 }
                 childCallIds.add(mCallIdMapper.getCallId(child));
             }
-
-            if (childConnectTimeMillis != Long.MAX_VALUE) {
-                connectTimeMillis = childConnectTimeMillis;
-            }
+            connectTimeMillis = Math.min(connectTimeMillis, childConnectTimeMillis);
         }
 
         if (call.isRespondViaSmsCapable()) {
