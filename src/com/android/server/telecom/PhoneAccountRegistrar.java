@@ -28,6 +28,7 @@ import android.telecom.ConnectionService;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
+import android.telephony.PhoneNumberUtils;
 import android.content.ComponentName;
 import android.content.Context;
 import android.net.Uri;
@@ -92,6 +93,7 @@ public final class PhoneAccountRegistrar {
     private final List<Listener> mListeners = new CopyOnWriteArrayList<>();
     private final AtomicFile mAtomicFile;
     private final Context mContext;
+    private final SubscriptionManager mSubscriptionManager;
     private State mState;
 
     public PhoneAccountRegistrar(Context context) {
@@ -112,7 +114,27 @@ public final class PhoneAccountRegistrar {
 
         mState = new State();
         mContext = context;
+        mSubscriptionManager = SubscriptionManager.from(mContext);
         read();
+    }
+
+    /**
+     * Retrieves the subscription id for a given phone account if it exists. Subscription ids
+     * apply only to PSTN/SIM card phone accounts so all other accounts should not have a
+     * subscription id.
+     * @param accountHandle The handle for the phone account for which to retrieve the
+     * subscription id.
+     * @return The value of the subscription id or -1 if it does not exist or is not valid.
+     */
+    public int getSubscriptionIdForPhoneAccount(PhoneAccountHandle accountHandle) {
+        PhoneAccount account = getPhoneAccount(accountHandle);
+        if (account == null || !account.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION) ||
+                !TextUtils.isDigitsOnly(accountHandle.getId())) {
+            // Since no decimals or negative numbers can be valid subscription ids, only a string of
+            // numbers can be subscription id
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        }
+        return Integer.parseInt(accountHandle.getId());
     }
 
     /**
@@ -249,15 +271,15 @@ public final class PhoneAccountRegistrar {
                 Log.i(this, "setDefaultVoicePhoneAccount, only emergency account present ");
                 return;
             }
-            Long subId = SubscriptionManager.getDefaultVoiceSubId();
+            int subId = SubscriptionManager.getDefaultVoiceSubId();
             try {
-                subId = Long.parseLong(mState.defaultOutgoing.getId());
+                subId = Integer.parseInt(mState.defaultOutgoing.getId());
             } catch (NumberFormatException e) {
                 Log.w(this, " NumberFormatException " + e);
             }
             Log.i(this, "set voice default subId as  " + subId + " prmotp = " + voicePrompt);
             if (SubscriptionManager.getDefaultVoiceSubId() != subId) {
-                SubscriptionManager.setDefaultVoiceSubId(subId);
+                mSubscriptionManager.setDefaultVoiceSubId(subId);
             }
             if (voicePrompt == true) {
                 SubscriptionManager.setVoicePromptEnabled(false);
@@ -293,7 +315,8 @@ public final class PhoneAccountRegistrar {
             // Return the registered sim call manager iff it still exists (we keep a sticky
             // setting to survive account deletion and re-addition)
             for (int i = 0; i < mState.accounts.size(); i++) {
-                if (mState.accounts.get(i).getAccountHandle().equals(mState.simCallManager)) {
+                if (mState.accounts.get(i).getAccountHandle().equals(mState.simCallManager)
+                        && !resolveComponent(mState.simCallManager.getComponentName()).isEmpty()) {
                     return mState.simCallManager;
                 }
             }
@@ -303,14 +326,9 @@ public final class PhoneAccountRegistrar {
         String defaultConnectionMgr =
                 mContext.getResources().getString(R.string.default_connection_manager_component);
         if (!TextUtils.isEmpty(defaultConnectionMgr)) {
-            PackageManager pm = mContext.getPackageManager();
-
             ComponentName componentName = ComponentName.unflattenFromString(defaultConnectionMgr);
-            Intent intent = new Intent(ConnectionService.SERVICE_INTERFACE);
-            intent.setComponent(componentName);
-
             // Make sure that the component can be resolved.
-            List<ResolveInfo> resolveInfos = pm.queryIntentServices(intent, 0);
+            List<ResolveInfo> resolveInfos = resolveComponent(componentName);
             if (!resolveInfos.isEmpty()) {
                 // See if there is registered PhoneAccount by this component.
                 List<PhoneAccountHandle> handles = getAllPhoneAccountHandles();
@@ -328,6 +346,13 @@ public final class PhoneAccountRegistrar {
         }
 
         return null;
+    }
+
+    private List<ResolveInfo> resolveComponent(ComponentName componentName) {
+        PackageManager pm = mContext.getPackageManager();
+        Intent intent = new Intent(ConnectionService.SERVICE_INTERFACE);
+        intent.setComponent(componentName);
+        return pm.queryIntentServices(intent, 0);
     }
 
     /**
@@ -486,6 +511,11 @@ public final class PhoneAccountRegistrar {
         }
     }
 
+    public boolean isVoiceMailNumber(PhoneAccountHandle accountHandle, String number) {
+        int subId = getSubscriptionIdForPhoneAccount(accountHandle);
+        return PhoneNumberUtils.isVoiceMailNumber(subId, number);
+    }
+
     public void addListener(Listener l) {
         mListeners.add(l);
     }
@@ -558,7 +588,10 @@ public final class PhoneAccountRegistrar {
         List<PhoneAccountHandle> accountHandles = new ArrayList<>();
         for (PhoneAccount m : mState.accounts) {
             if (m.hasCapabilities(flags) && (uriScheme == null || m.supportsUriScheme(uriScheme))) {
-                accountHandles.add(m.getAccountHandle());
+                // Also filter out unresolveable accounts
+                if (!resolveComponent(m.getAccountHandle().getComponentName()).isEmpty()) {
+                    accountHandles.add(m.getAccountHandle());
+                }
             }
         }
         return accountHandles;
@@ -944,7 +977,6 @@ public final class PhoneAccountRegistrar {
                         .setAddress(address)
                         .setSubscriptionAddress(subscriptionAddress)
                         .setCapabilities(capabilities)
-                        .setIconResId(iconResId)
                         .setShortDescription(shortDescription)
                         .setSupportedUriSchemes(supportedUriSchemes)
                         .build();

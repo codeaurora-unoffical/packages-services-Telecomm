@@ -18,8 +18,6 @@ package com.android.server.telecom;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,6 +27,7 @@ import android.os.SystemProperties;
 import android.provider.CallLog.Calls;
 import android.telecom.AudioState;
 import android.telecom.CallState;
+import android.telecom.Connection;
 import android.telecom.DisconnectCause;
 import android.telecom.GatewayInfo;
 import android.telecom.Conference;
@@ -36,12 +35,12 @@ import android.telecom.ParcelableConference;
 import android.telecom.ParcelableConnection;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
-import android.telecom.PhoneCapabilities;
 import android.telecom.TelecomManager;
+import android.telecom.VideoProfile;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CallStateException;
-import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.util.BlacklistUtils;
@@ -56,7 +55,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import android.telecom.VideoProfile;
 
 /**
  * Singleton.
@@ -92,7 +90,7 @@ public final class CallsManager extends Call.ListenerBase {
     /**
      * Singleton instance of the {@link CallsManager}, initialized from {@link TelecomService}.
      */
-    private static CallsManager INSTANCE = null;
+    private static CallsManager sInstance = null;
 
     private static final String TAG = "CallsManager";
 
@@ -166,9 +164,11 @@ public final class CallsManager extends Call.ListenerBase {
     private InCallTonePlayer mSupervisoryCallHoldTonePlayer = null;
     private String mSubInConversation = null;
 
+    private Runnable mStopTone;
+
     /** Singleton accessor. */
     static CallsManager getInstance() {
-        return INSTANCE;
+        return sInstance;
     }
 
     /**
@@ -177,7 +177,7 @@ public final class CallsManager extends Call.ListenerBase {
      * @param instance The instance to set.
      */
     static void initialize(CallsManager instance) {
-        INSTANCE = instance;
+        sInstance = instance;
     }
 
     /**
@@ -299,6 +299,40 @@ public final class CallsManager extends Call.ListenerBase {
     @Override
     public void onPostDialWait(Call call, String remaining) {
         mInCallController.onPostDialWait(call, remaining);
+    }
+
+    @Override
+    public void onPostDialChar(final Call call, char nextChar) {
+        if (PhoneNumberUtils.is12Key(nextChar)) {
+            // Play tone if it is one of the dialpad digits, canceling out the previously queued
+            // up stopTone runnable since playing a new tone automatically stops the previous tone.
+            if (mStopTone != null) {
+                mHandler.removeCallbacks(mStopTone);
+            }
+
+            mDtmfLocalTonePlayer.playTone(call, nextChar);
+
+            mStopTone = new Runnable() {
+                @Override
+                public void run() {
+                    // Set a timeout to stop the tone in case there isn't another tone to follow.
+                    mDtmfLocalTonePlayer.stopTone(call);
+                }
+            };
+            mHandler.postDelayed(
+                    mStopTone,
+                    Timeouts.getDelayBetweenDtmfTonesMillis(mContext.getContentResolver()));
+        } else if (nextChar == 0 || nextChar == TelecomManager.DTMF_CHARACTER_WAIT ||
+                nextChar == TelecomManager.DTMF_CHARACTER_PAUSE) {
+            // Stop the tone if a tone is playing, removing any other stopTone callbacks since
+            // the previous tone is being stopped anyway.
+            if (mStopTone != null) {
+                mHandler.removeCallbacks(mStopTone);
+            }
+            mDtmfLocalTonePlayer.stopTone(call);
+        } else {
+            Log.w(this, "onPostDialChar: invalid value %d", nextChar);
+        }
     }
 
     @Override
@@ -467,6 +501,15 @@ public final class CallsManager extends Call.ListenerBase {
      * @param extras The optional extras Bundle passed with the intent used for the incoming call.
      */
     Call startOutgoingCall(Uri handle, PhoneAccountHandle phoneAccountHandle, Bundle extras) {
+
+        boolean isAddParticipant = ((extras != null) && (extras.getBoolean(
+                TelephonyProperties.ADD_PARTICIPANT_KEY, false)));
+        if (isAddParticipant) {
+            addParticipant(handle.getSchemeSpecificPart());
+            mInCallController.bringToForeground(false);
+            return null;
+        }
+
         // Create a call with original handle. The handle may be changed when the call is attached
         // to a connection service, but in most cases will remain the same.
         Call call = new Call(
@@ -661,8 +704,8 @@ public final class CallsManager extends Call.ListenerBase {
             // STATE_DIALING, put it on hold before answering the call.
             if (activeCall != null && activeCall != call &&
                     (activeCall.isActive() ||
-                     activeCall.getState() == CallState.DIALING)) {
-                if (0 == (activeCall.getCallCapabilities() & PhoneCapabilities.HOLD)) {
+                    activeCall.getState() == CallState.DIALING)) {
+                if (0 == (activeCall.getConnectionCapabilities() & Connection.CAPABILITY_HOLD)) {
                     // This call does not support hold.  If it is from a different connection
                     // service, then disconnect it, otherwise allow the connection service to
                     // figure out the right states.
@@ -1051,7 +1094,10 @@ public final class CallsManager extends Call.ListenerBase {
         if (service != null) {
             for (Call call : mCalls) {
                 if (call.getConnectionService() == service) {
-                    markCallAsDisconnected(call, new DisconnectCause(DisconnectCause.ERROR));
+                    if (call.getState() != CallState.DISCONNECTED) {
+                        markCallAsDisconnected(call, new DisconnectCause(DisconnectCause.ERROR));
+                    }
+                    markCallAsRemoved(call);
                 }
             }
         }
@@ -1284,7 +1330,7 @@ public final class CallsManager extends Call.ListenerBase {
         if (oldConnectTime == 0 && call.getState() == CallState.ACTIVE) {
             call.setConnectTimeMillis(System.currentTimeMillis());
         }
-        call.setCallCapabilities(parcelableConference.getCapabilities());
+        call.setConnectionCapabilities(parcelableConference.getConnectionCapabilities());
         call.setVideoState(parcelableConference.getVideoState());
         call.setVideoProvider(parcelableConference.getVideoProvider());
 
@@ -1659,7 +1705,7 @@ public final class CallsManager extends Call.ListenerBase {
             }
 
             // Try to hold the live call before attempting the new outgoing call.
-            if (liveCall.can(PhoneCapabilities.HOLD)) {
+            if (liveCall.can(Connection.CAPABILITY_HOLD)) {
                 liveCall.hold();
                 return true;
             }
@@ -1697,7 +1743,7 @@ public final class CallsManager extends Call.ListenerBase {
                 return true;
             }
             // Try to hold the live call before attempting the new outgoing call.
-            if (liveCall.can(PhoneCapabilities.HOLD)) {
+            if (liveCall.can(Connection.CAPABILITY_HOLD)) {
                 liveCall.hold();
                 return true;
             }
@@ -1740,7 +1786,7 @@ public final class CallsManager extends Call.ListenerBase {
         } else {
             call.setConnectTimeMillis(System.currentTimeMillis());
         }
-        call.setCallCapabilities(connection.getCapabilities());
+        call.setConnectionCapabilities(connection.getConnectionCapabilities());
         call.setCallerDisplayName(connection.getCallerDisplayName(),
                 connection.getCallerDisplayNamePresentation());
 
