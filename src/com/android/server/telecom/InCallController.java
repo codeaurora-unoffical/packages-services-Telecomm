@@ -390,6 +390,7 @@ public final class InCallController extends CallsManagerListenerBase {
                 }
             }
             onAudioStateChanged(null, CallsManager.getInstance().getAudioState());
+            onCanAddCallChanged(CallsManager.getInstance().canAddCall());
         } else {
             unbind();
         }
@@ -642,10 +643,6 @@ public final class InCallController extends CallsManagerListenerBase {
             mCallIdMapper.addCall(call);
             call.addListener(mCallListener);
         }
-    }
-
-    boolean isServiceConnected() {
-        return !mInCallServices.isEmpty();
     }
 
     /**
