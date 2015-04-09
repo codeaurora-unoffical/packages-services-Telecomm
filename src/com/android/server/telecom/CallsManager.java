@@ -16,8 +16,10 @@
 
 package com.android.server.telecom;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -39,6 +41,7 @@ import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
+import android.widget.Toast;
 
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.PhoneConstants;
@@ -142,6 +145,7 @@ public final class CallsManager extends Call.ListenerBase {
     private final Set<Call> mLocallyDisconnectingCalls = new HashSet<>();
 
     private boolean mCanAddCall = true;
+    private boolean mIsLowBattery = false;
 
     /**
      * The call the user is currently interacting with. This is the call that should have audio
@@ -219,6 +223,45 @@ public final class CallsManager extends Call.ListenerBase {
         mListeners.add(mHeadsetMediaButton);
         mListeners.add(RespondViaSmsManager.getInstance());
         mListeners.add(mProximitySensorManager);
+
+        if (TelephonyUtil.isLowBatteryVideoCallSupported(context)) {
+            Log.d(this, "Register for Low battery intent: ");
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Intent.ACTION_BATTERY_LOW);
+            filter.addAction(Intent.ACTION_BATTERY_OKAY);
+            mContext.registerReceiver(mBatteryLevel, filter);
+
+            mIsLowBattery = TelephonyUtil.isLowBattery(context);
+        }
+    }
+
+    private BroadcastReceiver mBatteryLevel = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            Log.d(this, "BatteryIntent received: " + action);
+            if (Intent.ACTION_BATTERY_LOW.equals(action)) {
+                mIsLowBattery = true;
+                if (disconnectVideoCalls(DisconnectCause.LOW_BATTERY)) {
+                    Toast.makeText(mContext, mContext.getResources().getString(R.string.
+                            video_call_not_allowed_for_low_battery), Toast.LENGTH_SHORT).show();
+                }
+            } else if (Intent.ACTION_BATTERY_OKAY.equals(action)) {
+                mIsLowBattery = false;
+            }
+        }
+    };
+
+    private boolean disconnectVideoCalls(int reason) {
+        boolean isVideoCallDisconnected = false;
+        for (Call call : mCalls) {
+            if (VideoProfile.VideoState.isVideo(call.getVideoState()) &&
+                    call.getParentCall() == null) {
+                disconnectCallWithReason(call, reason);
+                isVideoCallDisconnected = true;
+            }
+        }
+        return isVideoCallDisconnected;
     }
 
     @Override
@@ -257,16 +300,27 @@ public final class CallsManager extends Call.ListenerBase {
             setCallState(incomingCall, CallState.RINGING);
             if (hasMaximumRingingCalls(incomingCall.getTargetPhoneAccount().getId())) {
                 incomingCall.reject(false, null);
-                // since the call was not added to the list of calls, we have to call the missed
-                // call notifier and the call logger manually.
-                mMissedCallNotifier.showMissedCallNotification(incomingCall);
-                mCallLogManager.logCall(incomingCall, Calls.MISSED_TYPE);
+                showCallAsMissedCall(incomingCall);
+            } else if (mIsLowBattery && VideoProfile.VideoState.
+                    isVideo(incomingCall.getVideoState())) {
+                incomingCall.rejectWithReason(false, null, DisconnectCause.LOW_BATTERY);
+                showCallAsMissedCall(incomingCall);
+
+                Toast.makeText(mContext, mContext.getResources().getString(R.string.
+                        video_call_not_allowed_due_to_low_battery), Toast.LENGTH_SHORT).show();
             } else {
                 incomingCall.mIsActiveSub = true;
                 addCall(incomingCall);
                 setActiveSubscription(incomingCall.getTargetPhoneAccount().getId());
             }
         }
+    }
+
+    private void showCallAsMissedCall(Call incomingCall) {
+        // since the call was not added to the list of calls, we have to call the missed
+        // call notifier and the call logger manually.
+        mMissedCallNotifier.showMissedCallNotification(incomingCall);
+        mCallLogManager.logCall(incomingCall, Calls.MISSED_TYPE);
     }
 
     @Override
@@ -821,6 +875,18 @@ public final class CallsManager extends Call.ListenerBase {
         } else {
             mLocallyDisconnectingCalls.add(call);
             call.disconnect();
+        }
+    }
+
+    void disconnectCallWithReason(Call call, int disconnectCause) {
+        Log.d(this, "disconnectCallWithReason %s", call);
+
+        if (!mCalls.contains(call)) {
+            Log.w(this, "Unknown call (%s) asked to disconnect", call);
+        } else {
+            Log.d(this, "disconnectCallWithReason before call %s", call);
+            mLocallyDisconnectingCalls.add(call);
+            call.disconnectWithReason(disconnectCause);
         }
     }
 

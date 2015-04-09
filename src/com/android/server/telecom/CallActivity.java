@@ -147,6 +147,15 @@ public class CallActivity extends Activity {
             return;
         }
 
+        if (VideoProfile.VideoState.isVideo(videoState) &&
+                TelephonyUtil.isLowBatteryVideoCallSupported(getApplicationContext()) &&
+                TelephonyUtil.isLowBattery(getApplicationContext())) {
+            Toast.makeText(this, getResources().getString(R.string.
+                    video_call_not_allowed_due_to_low_battery), Toast.LENGTH_SHORT).show();
+            Log.d(this, "Rejecting video calls due to low battery");
+            return;
+        }
+
         AppOpsManager appOps = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
         int launchedFromUid;
         String launchedFromPackage;
