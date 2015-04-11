@@ -848,24 +848,30 @@ final class Call implements CreateConnectionResponse {
      * Attempts to disconnect the call through the connection service.
      */
     void disconnect() {
+        disconnectWithReason(DisconnectCause.LOCAL);
+    }
+
+    void disconnectWithReason(int disconnectCause) {
         // Track that the call is now locally disconnecting.
+        Log.d(this, "disconnectWithReason dicsonnectcause %d", disconnectCause);
         setLocallyDisconnecting(true);
 
         if (mState == CallState.NEW || mState == CallState.PRE_DIAL_WAIT ||
                 mState == CallState.CONNECTING) {
-            Log.v(this, "Aborting call %s", this);
+            Log.d(this, "Aborting call %s", this);
             abort();
         } else if (mState != CallState.ABORTED && mState != CallState.DISCONNECTED) {
+            Log.d(this, "disconnectWithReason %s", mConnectionService);
             if (mConnectionService == null) {
                 Log.e(this, new Exception(), "disconnect() request on a call without a"
                         + " connection service.");
             } else {
-                Log.i(this, "Send disconnect to connection service for call: %s", this);
+                Log.d(this, "Send disconnect to connection service for call: %s", this);
                 // The call isn't officially disconnected until the connection service
                 // confirms that the call was actually disconnected. Only then is the
                 // association between call and connection service severed, see
                 // {@link CallsManager#markCallAsDisconnected}.
-                mConnectionService.disconnect(this);
+                mConnectionService.disconnectWithReason(this, disconnectCause);
             }
         }
     }
@@ -926,12 +932,16 @@ final class Call implements CreateConnectionResponse {
      * @param textMessage An optional text message to send as part of the rejection.
      */
     void reject(boolean rejectWithMessage, String textMessage) {
+        rejectWithReason(rejectWithMessage, textMessage, DisconnectCause.REJECTED);
+    }
+
+    void rejectWithReason(boolean rejectWithMessage, String textMessage, int disconnectCause) {
         Preconditions.checkNotNull(mConnectionService);
 
         // Check to verify that the call is still in the ringing state. A call can change states
         // between the time the user hits 'reject' and Telecomm receives the command.
         if (isRinging("reject")) {
-            mConnectionService.reject(this);
+            mConnectionService.rejectWithReason(this, disconnectCause);
         }
     }
 
