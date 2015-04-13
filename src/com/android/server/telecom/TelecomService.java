@@ -702,10 +702,10 @@ public class TelecomService extends Service {
         }
 
         @Override
-        public long getActiveSubscription() { return 0; }
+        public int getActiveSubscription() { return 0; }
 
         @Override
-        public void switchToOtherActiveSub(long subId) { }
+        public void switchToOtherActiveSub(int subId) { }
 
         /**
          * Dumps the current state of the TelecomService.  Used when generating problem reports.
