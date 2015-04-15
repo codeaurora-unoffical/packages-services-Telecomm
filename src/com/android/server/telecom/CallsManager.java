@@ -2038,6 +2038,9 @@ public final class CallsManager extends Call.ListenerBase {
             }
 
             for (Call call : mCalls) {
+                if (call.getParentCall() != null) {
+                    continue;
+                }
                 if ((currentState == call.getState()) &&
                         (call.getTargetPhoneAccount() != null) &&
                         (isSameIdOrSipId(call.getTargetPhoneAccount().getId(), sub))) {
