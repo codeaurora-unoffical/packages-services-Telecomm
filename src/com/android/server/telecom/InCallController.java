@@ -373,6 +373,7 @@ public final class InCallController extends CallsManagerListenerBase {
                 }
             }
             onAudioStateChanged(null, CallsManager.getInstance().getAudioState());
+            onCanAddCallChanged(CallsManager.getInstance().canAddCall());
         } else {
             unbind();
         }

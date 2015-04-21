@@ -1438,7 +1438,7 @@ public final class CallsManager extends Call.ListenerBase {
 
     private void updateCanAddCall() {
         boolean newCanAddCall = canAddCall();
-        if (newCanAddCall != mCanAddCall) {
+        if ((newCanAddCall != mCanAddCall)) {
             mCanAddCall = newCanAddCall;
             for (CallsManagerListener listener : mListeners) {
                 listener.onCanAddCallChanged(mCanAddCall);
