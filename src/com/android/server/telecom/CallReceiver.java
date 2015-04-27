@@ -51,6 +51,10 @@ public class CallReceiver extends BroadcastReceiver {
         String uriString = handle.getSchemeSpecificPart();
 
         if (!PhoneAccount.SCHEME_VOICEMAIL.equals(scheme)) {
+            if ("content".equals(scheme)) {
+                uriString = PhoneNumberUtils.getNumberFromIntent(intent, context
+                        .getApplicationContext());
+            }
             handle = Uri.fromParts(PhoneNumberUtils.isUriNumber(uriString) ?
                     PhoneAccount.SCHEME_SIP : PhoneAccount.SCHEME_TEL, uriString, null);
         }
@@ -61,6 +65,14 @@ public class CallReceiver extends BroadcastReceiver {
         Bundle clientExtras = null;
         if (intent.hasExtra(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS)) {
             clientExtras = intent.getBundleExtra(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS);
+        }
+
+        boolean isCsDomain = intent.getBooleanExtra(
+                TelephonyProperties.EXTRA_CALL_DOMAIN, false);
+        Log.d(TAG, "isCsDomain = " + isCsDomain);
+        if (isCsDomain) {
+            if (clientExtras == null) clientExtras = new Bundle();
+            clientExtras.putBoolean(TelephonyProperties.EXTRA_CALL_DOMAIN, isCsDomain);
         }
 
         boolean isConferenceUri = intent.getBooleanExtra(
