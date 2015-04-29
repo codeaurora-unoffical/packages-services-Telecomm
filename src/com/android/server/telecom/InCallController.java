@@ -638,7 +638,13 @@ public final class InCallController extends CallsManagerListenerBase {
         android.telecom.Call.Details.CAPABILITY_GENERIC_CONFERENCE,
 
         Connection.FDN_ENABLED,
-        android.telecom.Call.Details.FDN_ENABLED
+        android.telecom.Call.Details.FDN_ENABLED,
+
+        Connection.CAPABILITY_SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL,
+        android.telecom.Call.Details.CAPABILITY_SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL,
+
+        Connection.CAPABILITY_SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE,
+        android.telecom.Call.Details.CAPABILITY_SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE
     };
 
     private static int convertConnectionToCallCapabilities(int connectionCapabilities) {
