@@ -1499,7 +1499,14 @@ public final class CallsManager extends Call.ListenerBase {
             Log.d(this, "setCallExtras Null extras Bundle");
             return;
         }
+
         Bundle callExtras = call.getExtras();
+
+        // We don't want to put KEY_SESSION_MODIFICATION_CAUSE in OEM Extras. So extract that
+        // key from extras and put it separately into the call extras.
+        final String key = Connection.KEY_SESSION_MODIFICATION_CAUSE;
+        callExtras.putInt(key, extras.getInt(key));
+        extras.remove(key);
 
         // NOTE: OEM extras are packed "as is" within the Call
         // object's mExtras Bundle so as to preserve the
