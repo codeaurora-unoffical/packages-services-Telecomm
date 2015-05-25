@@ -23,13 +23,17 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.UserHandle;
+import android.os.SystemProperties;
 import android.telecom.GatewayInfo;
 import android.telecom.PhoneAccount;
+import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.provider.Settings;
 import android.text.TextUtils;
 
 // TODO: Needed for move to system service: import com.android.internal.R;
@@ -69,6 +73,14 @@ class NewOutgoingCallIntentBroadcaster {
     public static final String EXTRA_GATEWAY_URI = "com.android.phone.extra.GATEWAY_URI";
     public static final String EXTRA_GATEWAY_ORIGINAL_URI =
             "com.android.phone.extra.GATEWAY_ORIGINAL_URI";
+    private static final String IDP_IDN = "+62";
+    private static final String IDP_PLUS = "+";
+    private static final String IDP_ZERO = "0";
+    public static final String SETTINGS_INTERNATIONAL_PREFIX_NUMBER
+            = "international_prefix_number";
+    public static final String SETTINGS_INTERNATIONAL_PREFIX_ENABLE
+            = "international_prefix_enable";
+    public static final String DEFUALT_INTERNATIONAL_PREFIX = "01033";
 
     private final CallsManager mCallsManager;
     private final Call mCall;
@@ -119,6 +131,10 @@ class NewOutgoingCallIntentBroadcaster {
                     mCall.disconnect();
                 }
                 return;
+            }
+
+            if (SystemProperties.getBoolean("persist.env.phone.checkidp", false)) {
+                resultNumber = checkIdp(resultNumber);
             }
 
             Uri resultHandleUri = Uri.fromParts(PhoneNumberUtils.isUriNumber(resultNumber) ?
@@ -238,6 +254,10 @@ class NewOutgoingCallIntentBroadcaster {
         } else {
             Log.w(this, "Unhandled Intent %s. Ignoring and not placing call.", intent);
             return DisconnectCause.INVALID_NUMBER;
+        }
+
+        if (SystemProperties.getBoolean("persist.env.phone.checkidp", false)) {
+            number = checkIdp(number);
         }
 
         if (callImmediately) {
@@ -418,5 +438,62 @@ class NewOutgoingCallIntentBroadcaster {
             Log.v(this, " - updating action from CALL_PRIVILEGED to %s", action);
             intent.setAction(action);
         }
+    }
+
+    private int getSubId(Call call) {
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        PhoneAccountHandle ph = call.getTargetPhoneAccount();
+        if (ph != null) {
+            subId = SubscriptionManager.getDefaultVoiceSubId();
+            try {
+                if (ph.getId() != null) {
+                    subId = Integer.parseInt(ph.getId());
+                    Log.d(this, "get sub id from phone account = " + subId);
+                }
+            } catch (NumberFormatException e) {
+                Log.w(this,"wrong format sub id:" + e);
+            }
+        }
+        return subId;
+    }
+
+    private boolean isCDMAPhone(int subscription) {
+        int phoneType = TelephonyManager.getDefault().getCurrentPhoneType(subscription);
+        return (TelephonyManager.PHONE_TYPE_CDMA == phoneType);
+    }
+
+    private boolean isRoaming(int subscription) {
+        return TelephonyManager.getDefault().isNetworkRoaming(subscription);
+    }
+
+    private String checkIdp(String number) {
+        int subId = getSubId(mCall);
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            return number;
+        }
+
+        boolean isEnabled = Settings.System.getInt(mContext.getContentResolver(),
+                SETTINGS_INTERNATIONAL_PREFIX_ENABLE + subId, 1) == 1;
+        String checkedNumber = number;
+        if (isEnabled && isCDMAPhone(subId)) {
+            int indexIdn = number.indexOf(IDP_IDN);
+            int indexPlus = number.indexOf(IDP_PLUS);
+            if ((indexIdn != -1) && (!isRoaming(subId))) {
+                checkedNumber = number.substring(0, indexIdn) +
+                        IDP_ZERO + number.substring(indexIdn + IDP_IDN.length());
+            } else if (indexPlus != -1) {
+                String inernationalPrefix = Settings.System.getString(
+                    mContext.getContentResolver(), SETTINGS_INTERNATIONAL_PREFIX_NUMBER + subId);
+                if (TextUtils.isEmpty(inernationalPrefix)) {
+                    inernationalPrefix = DEFUALT_INTERNATIONAL_PREFIX;
+                }
+                checkedNumber =  number.substring(0, indexPlus) +
+                        inernationalPrefix + number.substring(indexPlus + IDP_PLUS.length());
+            }
+        }
+
+        Log.d(this, "checkIdp number = " + number + " enable = " + isEnabled + " CDMA phone = "
+                + isCDMAPhone(subId) + " subscription id = " + subId + " checked number = " + checkedNumber);
+        return checkedNumber;
     }
 }
