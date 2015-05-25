@@ -1101,7 +1101,8 @@ public final class CallsManager extends Call.ListenerBase {
 
     private String IsAnySubInLch() {
         for (PhoneAccountHandle ph : getPhoneAccountRegistrar().getCallCapablePhoneAccounts()) {
-            if (getPhoneAccountRegistrar().getPhoneAccount(ph).isSet(PhoneAccount.LCH)) {
+            PhoneAccount phAcc = getPhoneAccountRegistrar().getPhoneAccount(ph);
+            if ((phAcc != null) && (phAcc.isSet(PhoneAccount.LCH))) {
                 Log.d(this, "Sub in LCH: " + ph.getId());
                 return ph.getId();
             }
@@ -1898,7 +1899,7 @@ public final class CallsManager extends Call.ListenerBase {
                 PhoneAccountHandle ph = call.getTargetPhoneAccount();
                 PhoneAccount phAcc = getPhoneAccountRegistrar().getPhoneAccount(ph);
                 // Update state only if the new state is not true
-                if (!phAcc.isSet(PhoneAccount.LCH)) {
+                if ((phAcc != null) && (!phAcc.isSet(PhoneAccount.LCH))) {
                     phAcc.setBit(PhoneAccount.LCH);
                 }
             }
@@ -1920,14 +1921,14 @@ public final class CallsManager extends Call.ListenerBase {
         for (PhoneAccountHandle ph : getPhoneAccountRegistrar().getCallCapablePhoneAccounts()) {
             PhoneAccount phAcc = getPhoneAccountRegistrar().getPhoneAccount(ph);
             if (subId != null && subId.equals(ph.getId())
-                    && !phAcc.isSet(PhoneAccount.ACTIVE)) {
+                    && (phAcc != null) && !phAcc.isSet(PhoneAccount.ACTIVE)) {
                 changed = true;
                 phAcc.setBit(PhoneAccount.ACTIVE);
             } else if (subId != null && !subId.equals(ph.getId())
-                        && phAcc.isSet(PhoneAccount.ACTIVE)) {
+                    && (phAcc != null) && phAcc.isSet(PhoneAccount.ACTIVE)) {
                 changed = true;
                 phAcc.unSetBit(PhoneAccount.ACTIVE);
-            } else if (subId == null && phAcc.isSet(PhoneAccount.ACTIVE)) {
+            } else if ((subId == null) && (phAcc != null) && phAcc.isSet(PhoneAccount.ACTIVE)) {
                 phAcc.unSetBit(PhoneAccount.ACTIVE);
             }
         }
@@ -1966,7 +1967,8 @@ public final class CallsManager extends Call.ListenerBase {
 
     private String getConversationSub() {
         for (PhoneAccountHandle ph : getPhoneAccountRegistrar().getCallCapablePhoneAccounts()) {
-            if (!getPhoneAccountRegistrar().getPhoneAccount(ph).isSet(PhoneAccount.LCH) &&
+            PhoneAccount phAcc = getPhoneAccountRegistrar().getPhoneAccount(ph);
+            if (phAcc != null && !phAcc.isSet(PhoneAccount.LCH) &&
                     (getFirstCallWithStateUsingSubId(ph.getId(), CallState.ACTIVE, CallState.DIALING,
                         CallState.ON_HOLD) != null)) {
                 Log.d(this, "getConversationSub: " + ph.getId());
@@ -2037,7 +2039,8 @@ public final class CallsManager extends Call.ListenerBase {
 
     private String getLchSub() {
         for (PhoneAccountHandle ph : getPhoneAccountRegistrar().getCallCapablePhoneAccounts()) {
-            if (getPhoneAccountRegistrar().getPhoneAccount(ph).isSet(PhoneAccount.LCH)) {
+            PhoneAccount phAcc = getPhoneAccountRegistrar().getPhoneAccount(ph);
+            if (phAcc != null && phAcc.isSet(PhoneAccount.LCH)) {
                 return ph.getId();
             }
         }
@@ -2160,7 +2163,7 @@ public final class CallsManager extends Call.ListenerBase {
                 lchState = true;
             }
             // Update state only if the new state is different
-            if (lchState != phAcc.isSet(PhoneAccount.LCH)) {
+            if ((phAcc != null) && (lchState != phAcc.isSet(PhoneAccount.LCH))) {
                 Call call = getNonRingingLiveCall(sub);
                 Log.i(this, " setLocal Call Hold to  = " + lchState + " sub:" + sub);
 
