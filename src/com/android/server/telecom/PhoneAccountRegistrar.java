@@ -169,11 +169,11 @@ public final class PhoneAccountRegistrar {
     }
 
     PhoneAccountHandle getUserSelectedOutgoingPhoneAccount() {
-        if (TelephonyManager.getDefault().getPhoneCount() > 1) {
-            return getUserSelectedVoicePhoneAccount();
-        }
-
         if (mState.defaultOutgoing != null) {
+            if ((TelephonyManager.getDefault().getPhoneCount() > 1) &&
+                    !mState.defaultOutgoing.getId().contains("sip")) {
+                return getUserSelectedVoicePhoneAccount();
+            }
             // Return the registered outgoing default iff it still exists (we keep a sticky
             // default to survive account deletion and re-addition)
             for (int i = 0; i < mState.accounts.size(); i++) {
@@ -270,16 +270,17 @@ public final class PhoneAccountRegistrar {
             if (id.equals("E")) {
                 Log.i(this, "setDefaultVoicePhoneAccount, only emergency account present ");
                 return;
-            }
-            int subId = SubscriptionManager.getDefaultVoiceSubId();
-            try {
-                subId = Integer.parseInt(mState.defaultOutgoing.getId());
-            } catch (NumberFormatException e) {
-                Log.w(this, " NumberFormatException " + e);
-            }
-            Log.i(this, "set voice default subId as  " + subId + " prmotp = " + voicePrompt);
-            if (SubscriptionManager.getDefaultVoiceSubId() != subId) {
-                mSubscriptionManager.setDefaultVoiceSubId(subId);
+            } else if (!id.contains("sip")) {
+                int subId = SubscriptionManager.getDefaultVoiceSubId();
+                try {
+                    subId = Integer.parseInt(mState.defaultOutgoing.getId());
+                } catch (NumberFormatException e) {
+                    Log.w(this, " NumberFormatException " + e);
+                }
+                Log.i(this, "set voice default subId as  " + subId + " prmotp = " + voicePrompt);
+                if (SubscriptionManager.getDefaultVoiceSubId() != subId) {
+                    mSubscriptionManager.setDefaultVoiceSubId(subId);
+                }
             }
             if (voicePrompt == true) {
                 SubscriptionManager.setVoicePromptEnabled(false);
