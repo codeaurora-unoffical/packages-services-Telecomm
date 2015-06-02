@@ -626,7 +626,10 @@ public final class CallsManager extends Call.ListenerBase {
         // Do not support any more live calls.  Our options are to move a call to hold, disconnect
         // a call, or cancel this call altogether.
         if (!isPotentialInCallMMICode && !makeRoomForOutgoingCall(call, isEmergencyCall)) {
-            // just cancel at this point.
+            // just cancel at this point. if the call is not idle, bring the screen to foreground
+            if (getCallState() != TelephonyManager.CALL_STATE_IDLE) {
+                getInCallController().bringToForeground(false);
+            }
             return null;
         }
 
@@ -1709,6 +1712,11 @@ public final class CallsManager extends Call.ListenerBase {
     }
 
     private boolean makeRoomForOutgoingCall(Call call, boolean isEmergency) {
+        if (call.getTargetPhoneAccount() == null
+                && getNumCallsWithState(CallState.PRE_DIAL_WAIT) > 0) {
+            Log.d(this, "already exits a call waiting for account!");
+            return false;
+        }
         if (TelephonyManager.getDefault().getMultiSimConfiguration()
                 == TelephonyManager.MultiSimVariants.DSDA) {
             return makeRoomForOutgoingCallForDsda(call, isEmergency);
