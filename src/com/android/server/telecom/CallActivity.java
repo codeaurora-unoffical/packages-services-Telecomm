@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -176,9 +179,61 @@ public class CallActivity extends Activity {
             return;
         }
 
+        if (this.getResources().getBoolean(
+                com.android.internal.R.bool.config_regional_number_patterns_video_call)
+                && VideoProfile.VideoState.isVideo(videoState)) {
+            String number = intent.getData().toString();
+            if(number != null){
+                number = number.substring(number.indexOf(":") + 1);
+            }
+            if (!isVideoCallNumValid(number)) {
+                Toast.makeText(this, R.string.toast_make_video_call_failed,
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
         intent.putExtra(CallReceiver.KEY_IS_DEFAULT_DIALER, isDefaultDialer());
 
         sendBroadcastToReceiver(intent, false /* isIncoming */);
+    }
+
+    private boolean isVideoCallNumValid(String number){
+        String norNumber = normalizeNumber(number);
+        if (norNumber == null || "".equals(norNumber) ||
+                ((norNumber.startsWith("+") ? norNumber.length() < 8 : norNumber.length() < 7))
+                || number.contains("#") || number.contains("*")) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * Normalize a phone number by removing the characters other than digits. If
+     * the given number has keypad letters, the letters will be converted to
+     * digits first.
+     *
+     * @param phoneNumber The number to be normalized.
+     * @return The normalized number.
+     *
+     * TODO: Remove if PhoneNumberUtils.normalizeNumber(String phoneNumber) is made public.
+     */
+    private static String normalizeNumber(String phoneNumber) {
+        StringBuilder sb = new StringBuilder();
+        int len = phoneNumber.length();
+        for (int i = 0; i < len; i++) {
+            char c = phoneNumber.charAt(i);
+            // Character.digit() supports ASCII and Unicode digits (fullwidth, Arabic-Indic, etc.)
+            int digit = Character.digit(c, 10);
+            if (digit != -1) {
+                sb.append(digit);
+            } else if (i == 0 && c == '+') {
+                sb.append(c);
+            } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+                return normalizeNumber(PhoneNumberUtils.convertKeypadLettersToDigits(phoneNumber));
+            }
+        }
+        return sb.toString();
     }
 
     private boolean isTtyModeEnabled() {
