@@ -747,6 +747,8 @@ public final class CallsManager extends Call.ListenerBase {
     void answerCall(Call call, int videoState) {
         if (!mCalls.contains(call)) {
             Log.i(this, "Request to answer a non-existent call %s", call);
+        } else if (call.isActive()) {
+            Log.i(this, "Request to answer a call that is already active %s", call);
         } else {
             Call activeCall = getFirstCallWithStateUsingSubId(call.getTargetPhoneAccount()
                     .getId(), CallState.ACTIVE, CallState.DIALING);
