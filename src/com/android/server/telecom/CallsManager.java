@@ -205,7 +205,8 @@ public final class CallsManager extends Call.ListenerBase {
         mProximitySensorManager = new ProximitySensorManager(context);
         mPhoneStateBroadcaster = new PhoneStateBroadcaster();
         mCallLogManager = new CallLogManager(context);
-        mInCallController = new InCallController(context);
+        mInCallController = new InCallController(context,
+                SystemProperties.getBoolean("persist.radio.incalluialwayson", true));
         mDtmfLocalTonePlayer = new DtmfLocalTonePlayer(context);
         mConnectionServiceRepository = new ConnectionServiceRepository(mPhoneAccountRegistrar,
                 context);
@@ -640,6 +641,14 @@ public final class CallsManager extends Call.ListenerBase {
             call.setState(CallState.CONNECTING);
         }
 
+        if (extras != null) {
+            final int videoState = extras.getInt(
+                    TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE);
+            call.setVideoState(videoState);
+        } else {
+            call.setVideoState(VideoProfile.VideoState.AUDIO_ONLY);
+        }
+
         call.setExtras(extras);
 
         // Do not add the call if it is a potential MMI code.
@@ -738,6 +747,8 @@ public final class CallsManager extends Call.ListenerBase {
     void answerCall(Call call, int videoState) {
         if (!mCalls.contains(call)) {
             Log.i(this, "Request to answer a non-existent call %s", call);
+        } else if (call.isActive()) {
+            Log.i(this, "Request to answer a call that is already active %s", call);
         } else {
             Call activeCall = getFirstCallWithStateUsingSubId(call.getTargetPhoneAccount()
                     .getId(), CallState.ACTIVE, CallState.DIALING);
