@@ -178,8 +178,6 @@ final class CallAudioManager extends CallsManagerListenerBase
                 // choosing it in the wrong curcumstance because bluetooth devices can be
                 // semi-public (like in a very-occupied car) where earpiece doesn't carry that risk.
             }
-        } else {
-            newRoute = AudioState.ROUTE_BLUETOOTH;
         }
 
         // We need to call this every time even if we do not change the route because the supported
