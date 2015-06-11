@@ -390,6 +390,7 @@ public final class InCallController extends CallsManagerListenerBase {
                 }
             }
             onAudioStateChanged(null, CallsManager.getInstance().getAudioState());
+            onCanAddCallChanged(CallsManager.getInstance().canAddCall());
         } else {
             unbind();
         }
@@ -618,6 +619,9 @@ public final class InCallController extends CallsManagerListenerBase {
 
         Connection.ADD_PARTICIPANT,
         android.telecom.Call.Details.ADD_PARTICIPANT,
+
+        Connection.CAPABILITY_GENERIC_CONFERENCE,
+        android.telecom.Call.Details.CAPABILITY_GENERIC_CONFERENCE
     };
 
     private static int convertConnectionToCallCapabilities(int connectionCapabilities) {
@@ -639,10 +643,6 @@ public final class InCallController extends CallsManagerListenerBase {
             mCallIdMapper.addCall(call);
             call.addListener(mCallListener);
         }
-    }
-
-    boolean isServiceConnected() {
-        return !mInCallServices.isEmpty();
     }
 
     /**

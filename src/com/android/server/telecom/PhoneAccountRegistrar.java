@@ -193,11 +193,11 @@ public final class PhoneAccountRegistrar {
      *      if it was set by another user).
      */
     PhoneAccountHandle getUserSelectedOutgoingPhoneAccount() {
-        if (TelephonyManager.getDefault().getPhoneCount() > 1) {
-            return getUserSelectedVoicePhoneAccount();
-        }
-
         if (mState.defaultOutgoing != null) {
+            if ((TelephonyManager.getDefault().getPhoneCount() > 1) &&
+                    !mState.defaultOutgoing.getId().contains("sip")) {
+                return getUserSelectedVoicePhoneAccount();
+            }
             // Return the registered outgoing default iff it still exists (we keep a sticky
             // default to survive account deletion and re-addition)
             for (int i = 0; i < mState.accounts.size(); i++) {
@@ -213,7 +213,7 @@ public final class PhoneAccountRegistrar {
     }
 
     PhoneAccountHandle getUserSelectedVoicePhoneAccount() {
-        long voiceSubId = SubscriptionManager.getDefaultVoiceSubId();
+        int voiceSubId = SubscriptionManager.getDefaultVoiceSubId();
         boolean isVoicePrompt = SubscriptionManager.isVoicePromptEnabled();
         PhoneAccountHandle prefPhoneAccount = null;
 
@@ -228,9 +228,9 @@ public final class PhoneAccountRegistrar {
                    Log.i(this, "getUserSelVoicePhoneAccount, emergency account ");
                    return mState.accounts.get(i).getAccountHandle();
                 }
-                long subId = voiceSubId;
+                int subId = voiceSubId;
                 try {
-                    subId = Long.parseLong(id);
+                    subId = Integer.parseInt(id);
                 } catch (NumberFormatException e) {
                     Log.w(this, " NumberFormatException " + e);
                 }
@@ -308,16 +308,17 @@ public final class PhoneAccountRegistrar {
             if (id.equals("E")) {
                 Log.i(this, "setDefaultVoicePhoneAccount, only emergency account present ");
                 return;
-            }
-            int subId = SubscriptionManager.getDefaultVoiceSubId();
-            try {
-                subId = Integer.parseInt(mState.defaultOutgoing.getId());
-            } catch (NumberFormatException e) {
-                Log.w(this, " NumberFormatException " + e);
-            }
-            Log.i(this, "set voice default subId as  " + subId + " prmotp = " + voicePrompt);
-            if (SubscriptionManager.getDefaultVoiceSubId() != subId) {
-                mSubscriptionManager.setDefaultVoiceSubId(subId);
+            } else if (!id.contains("sip")) {
+                int subId = SubscriptionManager.getDefaultVoiceSubId();
+                try {
+                    subId = Integer.parseInt(mState.defaultOutgoing.getId());
+                } catch (NumberFormatException e) {
+                    Log.w(this, " NumberFormatException " + e);
+                }
+                Log.i(this, "set voice default subId as  " + subId + " prmotp = " + voicePrompt);
+                if (SubscriptionManager.getDefaultVoiceSubId() != subId) {
+                    mSubscriptionManager.setDefaultVoiceSubId(subId);
+                }
             }
             if (voicePrompt == true) {
                 SubscriptionManager.setVoicePromptEnabled(false);
@@ -633,7 +634,7 @@ public final class PhoneAccountRegistrar {
             if (Objects.equals(packageName, handle.getComponentName().getPackageName())
                     && Objects.equals(userHandle, handle.getUserHandle())) {
                 Log.i(this, "Removing phone account " + phoneAccount.getLabel());
-                it.remove();
+                mState.accounts.remove(phoneAccount);
                 accountsRemoved = true;
             }
         }
@@ -761,7 +762,7 @@ public final class PhoneAccountRegistrar {
         /**
          * The complete list of {@code PhoneAccount}s known to the Telecom subsystem.
          */
-        public final List<PhoneAccount> accounts = new ArrayList<>();
+        public final List<PhoneAccount> accounts = new CopyOnWriteArrayList<>();
 
         /**
          * The version number of the State data.

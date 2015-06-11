@@ -496,8 +496,15 @@ public final class CallsManager extends Call.ListenerBase {
 
         boolean isAddParticipant = ((extras != null) && (extras.getBoolean(
                 TelephonyProperties.ADD_PARTICIPANT_KEY, false)));
+        boolean isSkipSchemaOrConfUri = ((extras != null) && (extras.getBoolean(
+                TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false) ||
+                extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false)));
         if (isAddParticipant) {
-            addParticipant(handle.getSchemeSpecificPart());
+            String number = handle.getSchemeSpecificPart();
+            if (!isSkipSchemaOrConfUri) {
+                number = PhoneNumberUtils.stripSeparators(number);
+            }
+            addParticipant(number);
             mInCallController.bringToForeground(false);
             return null;
         }
@@ -513,10 +520,6 @@ public final class CallsManager extends Call.ListenerBase {
                 null /* phoneAccountHandle */,
                 false /* isIncoming */,
                 false /* isConference */);
-
-        boolean isSkipSchemaOrConfUri = ((extras != null) && (extras.getBoolean(
-                TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false) ||
-                extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false)));
 
         // Force tel scheme for ims conf uri/skip schema calls to avoid selection of sip accounts
         String scheme = (isSkipSchemaOrConfUri? PhoneAccount.SCHEME_TEL: handle.getScheme());
@@ -566,7 +569,10 @@ public final class CallsManager extends Call.ListenerBase {
             return null;
         }
 
-        if (phoneAccountHandle == null && accounts.size() > 1 && !isEmergencyCall) {
+        boolean needsAccountSelection = phoneAccountHandle == null && accounts.size() > 1 &&
+                !isEmergencyCall;
+
+        if (needsAccountSelection) {
             // This is the state where the user is expected to select an account
             call.setState(CallState.PRE_DIAL_WAIT);
             extras.putParcelableList(android.telecom.Call.AVAILABLE_PHONE_ACCOUNTS, accounts);
@@ -577,16 +583,7 @@ public final class CallsManager extends Call.ListenerBase {
         call.setExtras(extras);
 
         // Do not add the call if it is a potential MMI code.
-        if (phoneAccountHandle == null && isPotentialMMICode(handle) &&
-                accounts.size() > 1) {
-            mCalls.add(call);
-            call.addListener(this);
-            extras.putString("Handle", handle.toString());
-            Intent intent = new Intent(mContext, AccountSelection.class);
-            intent.putExtras(extras);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            mContext.startActivity(intent);
-        } else if (isPotentialMMICode(handle) || isPotentialInCallMMICode) {
+        if ((isPotentialMMICode(handle) || isPotentialInCallMMICode) && !needsAccountSelection) {
             call.addListener(this);
         } else {
             addCall(call);
@@ -952,16 +949,6 @@ public final class CallsManager extends Call.ListenerBase {
         }
     }
 
-    void phoneAccountSelectedForMMI(Uri handle, PhoneAccountHandle account) {
-        Call call = getFirstCallWithHandle(handle, CallState.PRE_DIAL_WAIT);
-        Log.d(this,"call: "+ call);
-        if (account != null) {
-            phoneAccountSelected(call, account);
-        } else {
-            call.disconnect();
-        }
-    }
-
     /** Called when the audio state changes. */
     void onAudioStateChanged(AudioState oldAudioState, AudioState newAudioState) {
         Log.v(this, "onAudioStateChanged, audioState: %s -> %s", oldAudioState, newAudioState);
@@ -1203,18 +1190,6 @@ public final class CallsManager extends Call.ListenerBase {
 
     Call getFirstCallWithState(int... states) {
         return getFirstCallWithState(null, states);
-    }
-
-    Call getFirstCallWithHandle(Uri handle, int... states) {
-        for (int currentState : states) {
-            for (Call call : mCalls) {
-                if ((currentState == call.getState()) &&
-                        call.getHandle().toString().equals(handle.toString())) {
-                    return call;
-                }
-            }
-        }
-        return null;
     }
 
     /**
@@ -1505,6 +1480,11 @@ public final class CallsManager extends Call.ListenerBase {
                     newForegroundCall = call;
                     break;
                 }
+                // After active calls dialing calls will have priority
+                if (call.getState() == CallState.DIALING) {
+                    newForegroundCall = call;
+                    break;
+                }
 
                 if (call.isAlive() || call.getState() == CallState.RINGING) {
                     newForegroundCall = call;
@@ -1526,7 +1506,7 @@ public final class CallsManager extends Call.ListenerBase {
 
     private void updateCanAddCall() {
         boolean newCanAddCall = canAddCall();
-        if ((newCanAddCall != mCanAddCall) && mInCallController.isServiceConnected()) {
+        if ((newCanAddCall != mCanAddCall)) {
             mCanAddCall = newCanAddCall;
             for (CallsManagerListener listener : mListeners) {
                 listener.onCanAddCallChanged(mCanAddCall);
@@ -1967,6 +1947,9 @@ public final class CallsManager extends Call.ListenerBase {
             }
 
             for (Call call : mCalls) {
+                if (call.getParentCall() != null) {
+                    continue;
+                }
                 if ((currentState == call.getState()) &&
                         (call.getTargetPhoneAccount() != null) &&
                         (isSameIdOrSipId(call.getTargetPhoneAccount().getId(), sub))) {
