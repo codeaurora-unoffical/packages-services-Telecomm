@@ -54,6 +54,7 @@ final class TtyManager implements WiredHeadsetManager.Listener {
 
         IntentFilter intentFilter = new IntentFilter(
                 TelecomManager.ACTION_TTY_PREFERRED_MODE_CHANGED);
+        intentFilter.addAction(Intent.ACTION_LOCALE_CHANGED);
         mContext.registerReceiver(mReceiver, intentFilter);
 
         updateCurrentTtyMode();
@@ -159,6 +160,10 @@ final class TtyManager implements WiredHeadsetManager.Listener {
                 if (mPreferredTtyMode != newPreferredTtyMode) {
                     mPreferredTtyMode = newPreferredTtyMode;
                     updateCurrentTtyMode();
+                }
+            } else if (action.equals(Intent.ACTION_LOCALE_CHANGED)) {
+                if (mWiredHeadsetManager.isPluggedIn()) {
+                    showHeadSetPlugin();
                 }
             }
         }
