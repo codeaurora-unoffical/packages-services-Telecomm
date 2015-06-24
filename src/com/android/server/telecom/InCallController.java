@@ -197,6 +197,7 @@ public final class InCallController extends CallsManagerListenerBase {
                 } catch (RemoteException ignored) {
                 }
             }
+            onAudioStateChanged(null, CallsManager.getInstance().getAudioState());
         }
         bind(false);
     }
