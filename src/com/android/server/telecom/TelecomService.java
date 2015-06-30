@@ -62,9 +62,6 @@ public class TelecomService extends Service {
     @SdkConstant(SdkConstant.SdkConstantType.SERVICE_ACTION)
     public static final String SERVICE_INTERFACE = "android.telecom.ITelecomService";
 
-    private static final String REGISTER_PROVIDER_OR_SUBSCRIPTION =
-              "com.android.server.telecom.permission.REGISTER_PROVIDER_OR_SUBSCRIPTION";
-//            android.Manifest.permission.REGISTER_PROVIDER_OR_SUBSCRIPTION;
     /** The context. */
     private Context mContext;
 
@@ -391,30 +388,18 @@ public class TelecomService extends Service {
             try {
                 enforcePhoneAccountModificationForPackage(
                         account.getAccountHandle().getComponentName().getPackageName());
-
-                /* FIXME_L-MR1_INTERNAL, uncomment below line, when relevant change
-                 * is merged
-                 */
-                /* if (account.hasCapabilities(PhoneAccount.CAPABILITY_CALL_PROVIDER)) {
+                if (account.hasCapabilities(PhoneAccount.CAPABILITY_CALL_PROVIDER)) {
                     enforceRegisterCallProviderPermission();
-                }*/
-                if (account.hasCapabilities(PhoneAccount.CAPABILITY_CALL_PROVIDER) ||
-                        account.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)) {
-                    /* FIXME_L-MR1_INTERNAL, uncomment below line, when relevant change
-                     * is merged
-                     */
+                }
+                if (account.hasCapabilities(PhoneAccount.CAPABILITY_SIM_SUBSCRIPTION)) {
                     enforceRegisterSimSubscriptionPermission();
-//                    enforceRegisterProviderOrSubscriptionPermission();
                 }
                 if (account.hasCapabilities(PhoneAccount.CAPABILITY_CONNECTION_MANAGER)) {
                     enforceRegisterConnectionManagerPermission();
                 }
-                /* FIXME_L-MR1_INTERNAL, uncomment below line, when relevant change
-                 * is merged
-                 */
-                /*if (account.hasCapabilities(PhoneAccount.CAPABILITY_MULTI_USER)) {
+                if (account.hasCapabilities(PhoneAccount.CAPABILITY_MULTI_USER)) {
                     enforceRegisterMultiUser();
-                }*/
+                }
                 enforceUserHandleMatchesCaller(account.getAccountHandle());
 
                 mPhoneAccountRegistrar.registerPhoneAccount(account);
@@ -894,11 +879,6 @@ public class TelecomService extends Service {
 
     private void enforceRegisterCallProviderPermission() {
         enforcePermission(android.Manifest.permission.REGISTER_CALL_PROVIDER);
-    }
-
-
-    private void enforceRegisterProviderOrSubscriptionPermission() {
-        enforcePermission(REGISTER_PROVIDER_OR_SUBSCRIPTION);
     }
 
     private void enforceRegisterSimSubscriptionPermission() {
