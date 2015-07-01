@@ -117,7 +117,9 @@ final class CallLogManager extends CallsManagerListenerBase {
             if (!call.isIncoming()) {
                 type = Calls.OUTGOING_TYPE;
             } else if ((oldState == CallState.RINGING) &&
-                    (call.getDisconnectCause().getCode() == DisconnectCause.MISSED)) {
+                    ((call.getDisconnectCause().getCode() == DisconnectCause.MISSED) ||
+                    (call.getDisconnectCause().getCode() == DisconnectCause.REJECTED &&
+                    mContext.getResources().getBoolean(R.bool.reject_call_as_missed_call)))) {
                 type = Calls.MISSED_TYPE;
             } else {
                 type = Calls.INCOMING_TYPE;
