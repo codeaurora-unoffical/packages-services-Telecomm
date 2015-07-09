@@ -116,6 +116,7 @@ final class CallAudioManager extends CallsManagerListenerBase
             } else {
                 updateAudioStreamAndMode();
             }
+            setInitialAudioState(call, true /*force*/);
         }
     }
 
