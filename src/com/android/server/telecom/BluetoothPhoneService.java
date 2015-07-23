@@ -40,6 +40,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.server.telecom.CallsManager.CallsManagerListener;
+import com.android.internal.telephony.PhoneConstants;
 
 import java.lang.NumberFormatException;
 import java.util.Collection;
@@ -503,6 +504,8 @@ public final class BluetoothPhoneService extends Service {
         Call activeCall = callsManager.getActiveCall();
         Call ringingCall = callsManager.getRingingCall();
         Call heldCall = callsManager.getHeldCall();
+        int phoneType = TelephonyManager.from(BluetoothPhoneService.this)
+                        .getPhoneType();
 
         // TODO: Keeping as Log.i for now.  Move to Log.d after L release if BT proves stable.
         Log.i(TAG, "Active: %s\nRinging: %s\nHeld: %s", activeCall, ringingCall, heldCall);
@@ -526,7 +529,7 @@ public final class BluetoothPhoneService extends Service {
                 return true;
             }
         } else if (chld == CHLD_TYPE_HOLDACTIVE_ACCEPTHELD) {
-            if (activeCall != null && activeCall.can(Connection.CAPABILITY_SWAP_CONFERENCE)) {
+            if (activeCall != null && phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                 activeCall.swapConference();
                 Log.i(TAG, "CDMA calls in conference swapped, updating headset");
                 updateHeadsetWithCallState(true /* force */);
@@ -545,7 +548,7 @@ public final class BluetoothPhoneService extends Service {
             }
         } else if (chld == CHLD_TYPE_ADDHELDTOCONF) {
             if (activeCall != null) {
-                if (activeCall.can(Connection.CAPABILITY_MERGE_CONFERENCE)) {
+                if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                     activeCall.mergeConference();
                     return true;
                 } else {
@@ -626,10 +629,11 @@ public final class BluetoothPhoneService extends Service {
             if (state == CALL_STATE_ACTIVE && activeChild != null) {
                 // Reevaluate state if we can MERGE or if we can SWAP without previously having
                 // MERGED.
+                int phoneType = TelephonyManager.from(BluetoothPhoneService.this)
+                                .getPhoneType();
                 boolean shouldReevaluateState =
-                        conferenceCall.can(Connection.CAPABILITY_MERGE_CONFERENCE) ||
-                        (conferenceCall.can(Connection.CAPABILITY_SWAP_CONFERENCE) &&
-                         !conferenceCall.wasConferencePreviouslyMerged());
+                        (phoneType == PhoneConstants.PHONE_TYPE_CDMA) &&
+                         !conferenceCall.wasConferencePreviouslyMerged();
 
                 if (shouldReevaluateState) {
                     isPartOfConference = false;
@@ -727,15 +731,18 @@ public final class BluetoothPhoneService extends Service {
         // (namely CDMA calls) we need to expose that as a held call in order for the BT device
         // to show "swap" and "merge" functionality.
         boolean ignoreHeldCallChange = false;
+        int phoneType = TelephonyManager.from(BluetoothPhoneService.this)
+                        .getPhoneType();
         if (activeCall != null && activeCall.isConference()) {
-            if (activeCall.can(Connection.CAPABILITY_SWAP_CONFERENCE)) {
-                // Indicate that BT device should show SWAP command by indicating that there is a
-                // call on hold, but only if the conference wasn't previously merged.
-                numHeldCalls = activeCall.wasConferencePreviouslyMerged() ? 0 : 1;
-            } else if (activeCall.can(Connection.CAPABILITY_MERGE_CONFERENCE)) {
-                numHeldCalls = 1;  // Merge is available, so expose via numHeldCalls.
+            if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+                if (activeCall.can(Connection.CAPABILITY_SWAP_CONFERENCE)) {
+                    // Indicate that BT device should show SWAP command by indicating that there
+                    // is a call on hold, but only if the conference wasn't previously merged.
+                    numHeldCalls = activeCall.wasConferencePreviouslyMerged() ? 0 : 1;
+                } else if (activeCall.can(Connection.CAPABILITY_MERGE_CONFERENCE)) {
+                    numHeldCalls = 1;  // Merge is available, so expose via numHeldCalls.
+                }
             }
-
             for (Call childCall : activeCall.getChildCalls()) {
                 // Held call has changed due to it being combined into a CDMA conference. Keep
                 // track of this and ignore any future update since it doesn't really count as
