@@ -24,10 +24,18 @@ import android.app.ActivityManagerNative;
 import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
@@ -108,6 +116,37 @@ public class CallActivity extends Activity {
         }
     }
 
+    private void playLowBatterySound() {
+        final ContentResolver cr = getApplicationContext().getContentResolver();
+        final PowerManager pm = (PowerManager) getApplicationContext()
+                .getSystemService(Context.POWER_SERVICE);
+        long ScreenOffTime = pm.isScreenOn() ? -1 : SystemClock.elapsedRealtime();
+        final int silenceAfter = Settings.Global.getInt(cr,
+                Settings.Global.LOW_BATTERY_SOUND_TIMEOUT, 0);
+        final long offTime = SystemClock.elapsedRealtime() - ScreenOffTime;
+
+        if ((silenceAfter > 0) && (ScreenOffTime > 0) && (offTime > silenceAfter)) {
+            return;
+        }
+
+        if (Settings.Global.getInt(cr, Settings.Global.POWER_SOUNDS_ENABLED, 1) == 1) {
+            final String soundPath = Settings.Global.getString(cr,
+                    Settings.Global.LOW_BATTERY_SOUND);
+            if (soundPath != null) {
+                final Uri soundUri = Uri.parse("file://" + soundPath);
+                if (soundUri != null) {
+                    final Ringtone sfx = RingtoneManager.getRingtone(
+                            getApplicationContext(), soundUri);
+                    if (sfx != null) {
+                        sfx.setStreamType(AudioManager.STREAM_SYSTEM);
+                        sfx.play();
+                    }
+                }
+            }
+        }
+    }
+
+
     private void processOutgoingCallIntent(Intent intent) {
         Uri handle = intent.getData();
         String scheme = handle.getScheme();
@@ -128,6 +167,12 @@ public class CallActivity extends Activity {
             Log.d(this, "Rejecting non-emergency phone call due to DISALLOW_OUTGOING_CALLS "
                     + "restriction");
             return;
+        }
+
+        if (TelephonyUtil.isLowBattery(getApplicationContext()) && this.getResources().getBoolean(
+                com.android.internal.R.bool.config_regional_play_low_battery_sound_for_call)) {
+            //play a low battery tone
+            playLowBatterySound();
         }
 
         int videoState = intent.getIntExtra(
