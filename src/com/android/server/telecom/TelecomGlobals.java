@@ -58,7 +58,9 @@ public final class TelecomGlobals {
     /**
      * The application context.
      */
+
     private Context mContext;
+
 
     private final BroadcastReceiver mUserSwitchedReceiver = new BroadcastReceiver() {
         @Override
@@ -84,8 +86,8 @@ public final class TelecomGlobals {
 
         mMissedCallNotifier = new MissedCallNotifier(mContext);
         mPhoneAccountRegistrar = new PhoneAccountRegistrar(mContext);
-
-        mCallsManager = new CallsManager(mContext, mMissedCallNotifier, mPhoneAccountRegistrar);
+        mCallsManager = new CallsManager(mContext, mMissedCallNotifier,
+                 mPhoneAccountRegistrar);
         CallsManager.initialize(mCallsManager);
         Log.i(this, "CallsManager initialized");
 
