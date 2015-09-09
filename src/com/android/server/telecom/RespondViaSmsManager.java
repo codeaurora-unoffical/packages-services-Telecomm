@@ -188,7 +188,7 @@ public class RespondViaSmsManager extends CallsManagerListenerBase {
      * Reject the call with the specified message. If message is null this call is ignored.
      */
     private void rejectCallWithMessage(Context context, String phoneNumber, String textMessage,
-            long subId) {
+            int subId) {
         if (textMessage != null) {
             final ComponentName component =
                     SmsApplication.getDefaultRespondViaMessageApplication(context,
