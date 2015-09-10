@@ -486,15 +486,13 @@ public final class InCallController extends CallsManagerListenerBase {
         List<Call> childCalls = call.getChildCalls();
         List<String> childCallIds = new ArrayList<>();
         if (!childCalls.isEmpty()) {
-            long childConnectTimeMillis = Long.MAX_VALUE;
+            connectTimeMillis = Long.MAX_VALUE;
             for (Call child : childCalls) {
                 if (child.getConnectTimeMillis() > 0) {
-                    childConnectTimeMillis = Math.min(child.getConnectTimeMillis(),
-                            childConnectTimeMillis);
+                    connectTimeMillis = Math.min(child.getConnectTimeMillis(), connectTimeMillis);
                 }
                 childCallIds.add(mCallIdMapper.getCallId(child));
             }
-            connectTimeMillis = Math.min(connectTimeMillis, childConnectTimeMillis);
         }
 
         if (call.isRespondViaSmsCapable()) {
