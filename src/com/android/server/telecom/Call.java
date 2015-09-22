@@ -997,6 +997,7 @@ final class Call implements CreateConnectionResponse {
     boolean isAlive() {
         switch (mState) {
             case CallState.NEW:
+            case CallState.PRE_DIAL_WAIT:
             case CallState.RINGING:
             case CallState.DISCONNECTED:
             case CallState.ABORTED:
