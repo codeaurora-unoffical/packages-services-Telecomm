@@ -55,6 +55,11 @@ public class CallReceiver extends BroadcastReceiver {
             if ("content".equals(scheme)) {
                 uriString = PhoneNumberUtils.getNumberFromIntent(intent, context
                         .getApplicationContext());
+                if (uriString == null) {
+                    disconnectCallAndShowErrorDialog(context, null,
+                            DisconnectCause.NO_PHONE_NUMBER_SUPPLIED);
+                    return;
+                }
             }
             handle = Uri.fromParts(PhoneNumberUtils.isUriNumber(uriString) ?
                     PhoneAccount.SCHEME_SIP : PhoneAccount.SCHEME_TEL, uriString, null);
@@ -178,7 +183,9 @@ public class CallReceiver extends BroadcastReceiver {
 
     private static void disconnectCallAndShowErrorDialog(
             Context context, Call call, int errorCode) {
-        call.disconnect();
+        if (call != null) {
+            call.disconnect();
+        }
         final Intent errorIntent = new Intent(context, ErrorDialogActivity.class);
         int errorMessageId = -1;
         switch (errorCode) {
