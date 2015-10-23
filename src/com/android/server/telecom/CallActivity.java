@@ -231,7 +231,7 @@ public class CallActivity extends Activity {
             if(number != null){
                 number = number.substring(number.indexOf(":") + 1);
             }
-            if (!isVideoCallNumValid(number)) {
+            if (!PhoneNumberUtils.isVideoCallNumValid(number)) {
                 Toast.makeText(this, R.string.toast_make_video_call_failed,
                         Toast.LENGTH_LONG).show();
                 return;
@@ -240,17 +240,6 @@ public class CallActivity extends Activity {
         intent.putExtra(CallReceiver.KEY_IS_DEFAULT_DIALER, isDefaultDialer());
 
         sendBroadcastToReceiver(intent, false /* isIncoming */);
-    }
-
-    private boolean isVideoCallNumValid(String number){
-        String norNumber = PhoneNumberUtils.normalizeNumber(number);
-        if (norNumber == null || "".equals(norNumber) ||
-                ((norNumber.startsWith("+") ? norNumber.length() < 8 : norNumber.length() < 7))
-                || number.contains("#") || number.contains("*")) {
-            return false;
-        } else {
-            return true;
-        }
     }
 
     private boolean isTtyModeEnabled() {
