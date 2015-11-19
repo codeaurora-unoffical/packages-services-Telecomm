@@ -885,7 +885,12 @@ final class Call implements CreateConnectionResponse {
                 // confirms that the call was actually disconnected. Only then is the
                 // association between call and connection service severed, see
                 // {@link CallsManager#markCallAsDisconnected}.
-                mConnectionService.disconnectWithReason(this, disconnectCause);
+
+                if (disconnectCause == DisconnectCause.LOW_BATTERY) {
+                    mConnectionService.disconnectWithReason(this, disconnectCause);
+                } else {
+                    mConnectionService.disconnect(this);
+                }
             }
         }
     }
