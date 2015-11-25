@@ -2087,6 +2087,7 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
 
         setCallState(call, Call.getStateFromConnectionState(connection.getState()),
                 "existing connection");
+        call.setVideoState(connection.getVideoState());
         call.setConnectionCapabilities(connection.getConnectionCapabilities());
         call.setCallerDisplayName(connection.getCallerDisplayName(),
                 connection.getCallerDisplayNamePresentation());
