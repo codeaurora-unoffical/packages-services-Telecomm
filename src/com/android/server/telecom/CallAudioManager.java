@@ -540,7 +540,10 @@ final class CallAudioManager extends CallsManagerListenerBase
                         AudioManager.STREAM_VOICE_CALL, mMostRecentlyUsedMode);
             } else if (!hasRingingForegroundCall()) {
                 Log.v(this, "updateAudioStreamAndMode : no ringing call");
-                abandonAudioFocus();
+                // Request to set audio mode normal. Here confirm if any call exist.
+                if (!hasAnyCalls()) {
+                    abandonAudioFocus();
+                }
             } else {
                 // mIsRinging is false, but there is a foreground ringing call present. Don't
                 // abandon audio focus immediately to prevent audio focus from getting lost between
@@ -698,6 +701,10 @@ final class CallAudioManager extends CallsManagerListenerBase
 
     private boolean hasFocus() {
         return mAudioFocusStreamType != STREAM_NONE;
+    }
+
+    private boolean hasAnyCalls() {
+        return mCallsManager.hasAnyCalls();
     }
 
     /**
