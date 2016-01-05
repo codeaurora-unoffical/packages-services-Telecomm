@@ -58,11 +58,8 @@ final class PhoneStateBroadcaster extends CallsManagerListenerBase {
     public void onCallAdded(Call call) {
         if (call.getState() == CallState.RINGING) {
             sendPhoneStateChangedBroadcast(call, TelephonyManager.CALL_STATE_RINGING);
-        } else if (call.getState() == CallState.SELECT_PHONE_ACCOUNT ||
-                call.getState() == CallState.CONNECTING) {
-            sendPhoneStateChangedBroadcast(call, TelephonyManager.CALL_STATE_OFFHOOK);
         }
-    };
+    }
 
     @Override
     public void onCallRemoved(Call call) {
