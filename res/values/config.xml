@@ -41,4 +41,5 @@
 
     <!-- DTMF key to be used for LCH hold tone -->
     <string name="lch_dtmf_key" translatable="false">D</string>
+    <bool name="config_regional_number_patterns_video_call">false</bool>
 </resources>

@@ -20,6 +20,7 @@ import com.android.server.telecom.CallIntentProcessor;
 import com.android.server.telecom.Log;
 import com.android.server.telecom.R;
 import com.android.server.telecom.TelephonyUtil;
+import android.telephony.PhoneNumberUtils;
 
 import android.app.AppOpsManager;
 import android.content.Context;
@@ -34,6 +35,7 @@ import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 // TODO: Needed for move to system service: import com.android.internal.R;
 
@@ -139,9 +141,57 @@ public class UserCallIntentProcessor {
             return;
         }
 
+        if (mContext.getResources().getBoolean(
+                R.bool.config_regional_number_patterns_video_call)
+                && VideoProfile.isVideo(videoState)) {
+            String number = intent.getData().toString();
+            if(number != null){
+                number = number.substring(number.indexOf(":") + 1);
+            }
+            if (!isVideoCallNumValid(number)) {
+                Toast.makeText(mContext, mContext.getResources().getString(R.string.
+                        toast_make_video_call_failed), Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
+
         intent.putExtra(CallIntentProcessor.KEY_IS_PRIVILEGED_DIALER,
                 isDefaultOrSystemDialer(callingPackageName));
         sendBroadcastToReceiver(intent);
+    }
+    /**
+     * Checks if the number is valid for videoCall
+     *
+     * @param number the number to call.
+     * @return true if the number is valid
+     *
+     * @hide
+     */
+     private boolean isVideoCallNumValid(String number ){
+        if (null == number) {
+            return false;
+        }
+        if (!mContext.getResources().getBoolean(
+                    R.bool.config_regional_number_patterns_video_call)) {
+            return false;
+        }
+        /**
+         * Check non-digit characters '#', '+', ',', and ';'
+         * "%23" stands for '#'
+         * "%2B" stands for '+'
+         * "%2C" stands for ','
+         * "%3B" stands for ';'
+         */
+        if (number.contains("%23") || number.contains("%2B") ||
+                number.contains("%2C") || number.contains("%3B") ||
+                number.contains("*")) {
+            return false;
+        }
+        String norNumber = PhoneNumberUtils.normalizeNumber(number);
+        if (norNumber == null || "".equals(norNumber) || norNumber.length() < 7) {
+            return false;
+        }
+        return true;
     }
 
     private boolean isTtyModeEnabled() {
