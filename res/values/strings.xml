@@ -141,4 +141,19 @@
 
     <string name="headset_plugin_view_text">Headset is plugged in.</string>
     <string name="headset_plugin_view_title">Headset</string>
+
+    <!-- International prefix source, add more items when there are more source, like
+        <item>+33</item>
+        <item>+44</item>
+    -->
+    <string-array name="international_idp" translatable="false">
+        <item>+33</item>
+    </string-array>
+    <!-- International prefix converted value, it is correspoding with international_idp,
+        <item>"0033"</item>
+        <item>"0044"</item>
+    -->
+    <string-array name="international_idp_values" translatable="false">
+        <item>"0033"</item>
+    </string-array>
 </resources>

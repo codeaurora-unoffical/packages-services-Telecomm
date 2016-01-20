@@ -28,10 +28,12 @@ import android.os.Trace;
 import android.os.UserHandle;
 import android.telecom.GatewayInfo;
 import android.telecom.PhoneAccount;
+import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
@@ -70,6 +72,11 @@ class NewOutgoingCallIntentBroadcaster {
     public static final String EXTRA_GATEWAY_URI = "com.android.phone.extra.GATEWAY_URI";
     public static final String EXTRA_GATEWAY_ORIGINAL_URI =
             "com.android.phone.extra.GATEWAY_ORIGINAL_URI";
+
+    private static final int IDP_NONE = 0;
+    private static final int IDP_CDMA = 1;
+    private static final int IDP_GSM = 2;
+    private static final int IDP_BOTH = 3;
 
     private final CallsManager mCallsManager;
     private final Call mCall;
@@ -124,6 +131,7 @@ class NewOutgoingCallIntentBroadcaster {
                 Trace.endSection();
                 return;
             }
+            resultNumber = checkIdp(resultNumber);
 
             boolean isSkipSchemaParsing = mIntent.getBooleanExtra(
                     TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
@@ -438,5 +446,72 @@ class NewOutgoingCallIntentBroadcaster {
             Log.v(this, " - updating action from CALL_PRIVILEGED to %s", action);
             intent.setAction(action);
         }
+    }
+
+    private int getSubId(Call call) {
+        int subId = SubscriptionManager.getDefaultVoiceSubId();
+
+        PhoneAccountHandle ph = call.getTargetPhoneAccount();
+        if (ph != null) {
+            try {
+                if (ph.getId() != null) {
+                    subId = Integer.parseInt(ph.getId());
+                    Log.d(this, "get sub id from phone account = " + subId);
+                }
+            } catch (NumberFormatException e) {
+                Log.e(this, e, "wrong format sub id.");
+            }
+        }
+
+        return subId;
+    }
+
+    private boolean checkIdpEnable(int subId) {
+        boolean ret = false;
+        final int checkIdp = mContext.getResources().getInteger(R.integer.check_idp);
+        final int phoneType = TelephonyManager.getDefault().getCurrentPhoneType(subId);
+
+        if (checkIdp == IDP_BOTH ||
+                (checkIdp == IDP_CDMA && phoneType == TelephonyManager.PHONE_TYPE_CDMA) ||
+                (checkIdp == IDP_GSM && phoneType == TelephonyManager.PHONE_TYPE_GSM)) {
+            ret = true;
+        }
+
+        Log.i(this, "checkIdp phone type:" + phoneType + " enabled:" + ret);
+        return ret;
+    }
+
+    private String checkIdp(String number) {
+        int subId = getSubId(mCall);
+        String checkedNumber = number;
+        String[] idp = mContext.getResources().getStringArray(R.array.international_idp);
+        String[] idpValues = mContext.getResources().
+                getStringArray(R.array.international_idp_values);
+        boolean isDataInvalid = (idp.length == 0 || idpValues.length == 0 ||
+                idp.length != idpValues.length);
+
+        if (checkIdpEnable(subId) && !isDataInvalid) {
+            final int checkRoamingIdx = mContext.getResources().
+                    getInteger(R.integer.check_idp_roaming_idx);
+            final boolean isNetworkRoaming =
+                    TelephonyManager.getDefault().isNetworkRoaming(subId);
+            for (int i = 0; i < idp.length; i++) {
+                Log.i(this, "checkIdp idp:" + idp[i] + " idp value:" + idpValues[i] +
+                        " roaming idx:" + checkRoamingIdx);
+                int indexIdp = checkedNumber.indexOf(idp[i]);
+
+                if (indexIdp != -1) {
+                    if ((checkRoamingIdx == i && !isNetworkRoaming) ||
+                        checkRoamingIdx != i) {
+                        checkedNumber = checkedNumber.substring(0, indexIdp) +
+                                idpValues[i] + checkedNumber.substring(indexIdp + idp[i].length());
+                    }
+                }
+            }
+        }
+
+        Log.i(this, "checkIdp number: " + number + " subid:" +
+                " checked number:" + checkedNumber + " inValid:" + isDataInvalid);
+        return checkedNumber;
     }
 }

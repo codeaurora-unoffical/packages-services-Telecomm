@@ -42,4 +42,14 @@
     <!-- DTMF key to be used for LCH hold tone -->
     <string name="lch_dtmf_key" translatable="false">D</string>
     <bool name="config_regional_number_patterns_video_call">false</bool>
+
+    <!--
+        customize the default value to check idp, default value is none,
+        0-none, 1-CDMA, 2-GSM, 3-CDMA/GSM
+    -->
+    <integer name="check_idp" translatable="false">0</integer>
+    <!-- the international_idp array index that check phone roaming state,
+        the correct value is [0~array.size()-1], default value is -1.
+    -->
+    <integer name="check_idp_roaming_idx" translatable="false">-1</integer>
 </resources>
