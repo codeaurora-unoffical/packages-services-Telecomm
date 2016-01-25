@@ -106,13 +106,15 @@ public class RespondViaSmsManager extends CallsManagerListenerBase {
                 // Note the default values here must agree with the corresponding
                 // android:defaultValue attributes in respond_via_sms_settings.xml.
                 textMessages.add(0, prefs.getString(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_1,
-                        res.getString(R.string.respond_via_sms_canned_response_1)));
+                        res.getString(R.string.respond_via_sms_canned_response_5)));
                 textMessages.add(1, prefs.getString(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_2,
-                        res.getString(R.string.respond_via_sms_canned_response_2)));
+                        res.getString(R.string.respond_via_sms_canned_response_6)));
                 textMessages.add(2, prefs.getString(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_3,
-                        res.getString(R.string.respond_via_sms_canned_response_3)));
+                        res.getString(R.string.respond_via_sms_canned_response_7)));
                 textMessages.add(3, prefs.getString(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_4,
-                        res.getString(R.string.respond_via_sms_canned_response_4)));
+                        res.getString(R.string.respond_via_sms_canned_response_8)));
+                textMessages.add(4, prefs.getString(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_5,
+                        res.getString(R.string.respond_via_sms_canned_response_9)));
 
                 Log.d(RespondViaSmsManager.this,
                         "loadCannedResponses() completed, found responses: %s",

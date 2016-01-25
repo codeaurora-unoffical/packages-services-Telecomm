@@ -80,6 +80,7 @@ public class RespondViaSmsSettings extends PreferenceActivity
         initPref(findPreference(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_2));
         initPref(findPreference(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_3));
         initPref(findPreference(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_4));
+        initPref(findPreference(QuickResponseUtils.KEY_CANNED_RESPONSE_PREF_5));
 
         ActionBar actionBar = getActionBar();
         if (actionBar != null) {

@@ -62,7 +62,11 @@
     <string name="respond_via_sms_canned_response_3">I\'ll call you later.</string>
     <!-- Canned response for the "Respond via SMS" feature for incoming calls. [CHAR LIMIT=35] -->
     <string name="respond_via_sms_canned_response_4">Can\'t talk now. Call me later?</string>
-
+    <string name="respond_via_sms_canned_response_5">Can\'t talk now. What\'s up?</string>
+    <string name="respond_via_sms_canned_response_6">"I am driving. Call you later."</string>
+    <string name="respond_via_sms_canned_response_7">I\'ll call you later.</string>
+    <string name="respond_via_sms_canned_response_8">"On the way."</string>
+    <string name="respond_via_sms_canned_response_9">Busy now. Call me later.</string>
     <!-- Title of settings screen for managing the "Respond via SMS" feature. [CHAR LIMIT=30] -->
     <string name="respond_via_sms_setting_title">Quick responses</string>
     <!-- Slightly more verbose title of settings screen for managing the

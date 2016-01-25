@@ -37,12 +37,12 @@ public class QuickResponseUtils {
     // Since (for now at least) the number of messages is fixed at 4, and since
     // SharedPreferences can't deal with arrays anyway, just store the messages
     // as 4 separate strings.
-    public static final int NUM_CANNED_RESPONSES = 4;
+    public static final int NUM_CANNED_RESPONSES = 5;
     public static final String KEY_CANNED_RESPONSE_PREF_1 = "canned_response_pref_1";
     public static final String KEY_CANNED_RESPONSE_PREF_2 = "canned_response_pref_2";
     public static final String KEY_CANNED_RESPONSE_PREF_3 = "canned_response_pref_3";
     public static final String KEY_CANNED_RESPONSE_PREF_4 = "canned_response_pref_4";
-
+    public static final String KEY_CANNED_RESPONSE_PREF_5 = "canned_response_pref_5";
     /**
      * As of L, QuickResponses were moved from Telephony to Telecom. Because of
      * this, we need to make sure that we migrate any old QuickResponses to our
@@ -67,7 +67,8 @@ public class QuickResponseUtils {
         final boolean responsesExist = prefs.contains(KEY_CANNED_RESPONSE_PREF_1)
                 || prefs.contains(KEY_CANNED_RESPONSE_PREF_2)
                 || prefs.contains(KEY_CANNED_RESPONSE_PREF_3)
-                || prefs.contains(KEY_CANNED_RESPONSE_PREF_4);
+                || prefs.contains(KEY_CANNED_RESPONSE_PREF_4)
+                || prefs.contains(KEY_CANNED_RESPONSE_PREF_5);
         if (responsesExist) {
             // Skip if the user has set any canned responses.
             Log.d(LOG_TAG, "maybeMigrateLegacyQuickResponses() - Telecom QuickResponses exist");

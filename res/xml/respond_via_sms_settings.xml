@@ -41,25 +41,30 @@
 
     <com.android.server.telecom.MultiLineTitleEditTextPreference
         android:key="canned_response_pref_1"
-        android:defaultValue="@string/respond_via_sms_canned_response_1"
+        android:defaultValue="@string/respond_via_sms_canned_response_5"
         android:dialogTitle="@string/respond_via_sms_edittext_dialog_title"
         android:persistent="false" />
 
     <com.android.server.telecom.MultiLineTitleEditTextPreference
         android:key="canned_response_pref_2"
-        android:defaultValue="@string/respond_via_sms_canned_response_2"
+        android:defaultValue="@string/respond_via_sms_canned_response_6"
         android:dialogTitle="@string/respond_via_sms_edittext_dialog_title"
         android:persistent="false" />
 
     <com.android.server.telecom.MultiLineTitleEditTextPreference
         android:key="canned_response_pref_3"
-        android:defaultValue="@string/respond_via_sms_canned_response_3"
+        android:defaultValue="@string/respond_via_sms_canned_response_7"
         android:dialogTitle="@string/respond_via_sms_edittext_dialog_title"
         android:persistent="false" />
 
     <com.android.server.telecom.MultiLineTitleEditTextPreference
         android:key="canned_response_pref_4"
-        android:defaultValue="@string/respond_via_sms_canned_response_4"
+        android:defaultValue="@string/respond_via_sms_canned_response_8"
+        android:dialogTitle="@string/respond_via_sms_edittext_dialog_title"
+        android:persistent="false" />
+    <com.android.server.telecom.MultiLineTitleEditTextPreference
+        android:key="canned_response_pref_5"
+        android:defaultValue="@string/respond_via_sms_canned_response_9"
         android:dialogTitle="@string/respond_via_sms_edittext_dialog_title"
         android:persistent="false" />
 
