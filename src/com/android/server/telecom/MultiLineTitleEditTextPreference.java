@@ -16,10 +16,17 @@
 
 package com.android.server.telecom;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.os.Bundle;
 import android.preference.EditTextPreference;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 /**
@@ -45,16 +52,21 @@ import android.widget.TextView;
  * <view class="com.android.server.telecom.Foo$Bar"> as you can with regular views.
  */
 public class MultiLineTitleEditTextPreference extends EditTextPreference {
+    private EditText mEditText;
+
     public MultiLineTitleEditTextPreference(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        mEditText = getEditText();
     }
 
     public MultiLineTitleEditTextPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
+        mEditText = getEditText();
     }
 
     public MultiLineTitleEditTextPreference(Context context) {
         super(context);
+        mEditText = getEditText();
     }
 
     // The "title" TextView inside an EditTextPreference defaults to
@@ -69,5 +81,46 @@ public class MultiLineTitleEditTextPreference extends EditTextPreference {
         if (textView != null) {
             textView.setSingleLine(false);
         }
+    }
+
+    @Override
+    public void  showDialog(Bundle state) {
+        super.showDialog(state);
+
+        String string = null;
+        final Button positiveButton = ((AlertDialog)getDialog())
+                .getButton(AlertDialog.BUTTON_POSITIVE);
+        if (mEditText != null) {
+            string = mEditText.getText().toString().trim();
+        }
+        if (TextUtils.isEmpty(string)) {
+            if (positiveButton != null) {
+                positiveButton.setEnabled(false);
+            }
+        }
+
+        if (mEditText == null || positiveButton == null) return;
+
+        mEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                String text = editable.toString().trim();
+                if (TextUtils.isEmpty(text)) {
+                    positiveButton.setEnabled(false);
+                } else {
+                    positiveButton.setEnabled(true);
+                }
+            }
+        });
     }
 }

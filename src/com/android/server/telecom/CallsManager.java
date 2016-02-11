@@ -1041,7 +1041,10 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
       * speaker phone.
       */
     void setAudioRoute(int route) {
+        Log.d(this, "Audio routed by user");
+        mCallAudioManager.mUserSetAudioRoute = true;
         mCallAudioManager.setAudioRoute(route);
+        mCallAudioManager.mUserSetAudioRoute = false;
     }
 
     /** Called by the in-call UI to turn the proximity sensor on. */

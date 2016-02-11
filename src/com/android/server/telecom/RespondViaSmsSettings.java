@@ -25,6 +25,7 @@ import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 

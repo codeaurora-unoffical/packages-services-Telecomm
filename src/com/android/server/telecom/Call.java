@@ -1044,6 +1044,9 @@ public class Call implements CreateConnectionResponse {
                 // jank altogether.
                 for (Listener listener : mListeners) {
                     if (listener.onCanceledViaNewOutgoingCallBroadcast(this)) {
+                        // There is a chance that this call may be reused, in which case
+                        // mCreateConnectionProcessor must be reset to null.
+                        mCreateConnectionProcessor = null;
                         // The first listener to handle this wins. A return value of true means that
                         // the listener will handle the disconnection process later and so we
                         // should not continue it here.
