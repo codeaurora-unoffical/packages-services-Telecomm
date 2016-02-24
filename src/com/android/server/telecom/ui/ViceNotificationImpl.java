@@ -68,11 +68,11 @@ import com.android.server.telecom.Log;
 import com.android.server.telecom.components.TelecomBroadcastReceiver;
 import com.android.server.telecom.TelecomBroadcastIntentProcessor;
 
-import org.codeaurora.ims.qtiims.IQtiImsInterface;
-import org.codeaurora.ims.qtiims.IQtiImsInterfaceListener;
-import org.codeaurora.ims.qtiims.QtiImsInterfaceListenerBaseImpl;
-import org.codeaurora.ims.qtiims.QtiImsInterfaceUtils;
-import org.codeaurora.ims.qtiims.QtiViceInfo;
+import org.codeaurora.ims.internal.IQtiImsExt;
+import org.codeaurora.ims.internal.IQtiImsExtListener;
+import org.codeaurora.ims.QtiImsExtListenerBaseImpl;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
+import org.codeaurora.ims.QtiViceInfo;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -89,7 +89,7 @@ import java.util.Set;
 public class ViceNotificationImpl extends CallsManagerListenerBase {
     private final Context mContext;
     private final NotificationManager mNotificationManager;
-    private IQtiImsInterface mQtiImsInterface = null;
+    private IQtiImsExt mQtiImsExt = null;
     private boolean mImsServiceBound = false;
     private Notification.Builder mBuilder = null;
     private Notification.Builder mPublicNotificationBuilder = null;
@@ -182,19 +182,19 @@ public class ViceNotificationImpl extends CallsManagerListenerBase {
         checkAndUpdateNotification();
     }
 
-    /* Service connection bound to IQtiImsInterface */
+    /* Service connection bound to IQtiImsExt */
     private ServiceConnection mConnection = new ServiceConnection() {
 
         /* Below API gets invoked when connection to ImsService is established */
         public void onServiceConnected(ComponentName className, IBinder service) {
             Log.i("ViceNotificationImpl", "onServiceConnected");
-            /* Retrieve the IQtiImsInterface */
-            mQtiImsInterface = IQtiImsInterface.Stub.asInterface(service);
+            /* Retrieve the IQtiImsExt */
+            mQtiImsExt = IQtiImsExt.Stub.asInterface(service);
 
             /**
              * If interface is available register for Vice notifications
              */
-            if (mQtiImsInterface != null) {
+            if (mQtiImsExt != null) {
                 registerForViceRefreshInfo();
             } else {
                 /* Request or interface is unavailable, unbind the service */
@@ -208,9 +208,9 @@ public class ViceNotificationImpl extends CallsManagerListenerBase {
         }
     };
 
-    /* QtiImsInterfaceListenerBaseImpl instance to handle call backs */
-    private IQtiImsInterfaceListener imsInterfaceListener =
-        new QtiImsInterfaceListenerBaseImpl() {
+    /* QtiImsExtListenerBaseImpl instance to handle call backs */
+    private IQtiImsExtListener imsInterfaceListener =
+        new QtiImsExtListenerBaseImpl() {
 
         @Override
         public void notifyRefreshViceInfo(QtiViceInfo qtiViceInfo) {
@@ -222,7 +222,7 @@ public class ViceNotificationImpl extends CallsManagerListenerBase {
     public void registerForViceRefreshInfo() {
         try {
             Log.d(this, "registerForViceRefreshInfo");
-            mQtiImsInterface.registerForViceRefreshInfo(imsInterfaceListener);
+            mQtiImsExt.registerForViceRefreshInfo(imsInterfaceListener);
         } catch (RemoteException e) {
             Log.d(this, "registerForViceRefreshInfo exception " + e);
         }
@@ -232,8 +232,8 @@ public class ViceNotificationImpl extends CallsManagerListenerBase {
      * Informs if call deflection interafce is available or not.
      * Returns true if allowed, false otherwise.
      */
-    public boolean isQtiImsInterfaceAvailable() {
-        return (mImsServiceBound && (mQtiImsInterface != null));
+    public boolean isQtiImsExtAvailable() {
+        return (mImsServiceBound && (mQtiImsExt != null));
     }
 
     /**
@@ -253,19 +253,19 @@ public class ViceNotificationImpl extends CallsManagerListenerBase {
             Log.d(this, "bindImsService: IMS service is not available!");
             return false;
         }
-        Intent intent = new Intent(IQtiImsInterface.class.getName());
+        Intent intent = new Intent(IQtiImsExt.class.getName());
         intent.setPackage(IMS_SERVICE_PKG_NAME);
         mImsServiceBound = mContext.bindService(intent,
                                    mConnection,
                                    0);
-        Log.d(this, "Getting IQtiImsInterface : " + (mImsServiceBound?"yes":"failed"));
+        Log.d(this, "Getting IQtiImsExt : " + (mImsServiceBound?"yes":"failed"));
         return mImsServiceBound;
     }
 
     /* Unbind the ims service if was already bound */
     public void unbindImsService() {
         if (mImsServiceBound) {
-            Log.d(this, "UnBinding IQtiImsInterface");
+            Log.d(this, "UnBinding IQtiImsExt");
 
             /* When disconnecting, reset the globals variables */
             mImsServiceBound = false;
