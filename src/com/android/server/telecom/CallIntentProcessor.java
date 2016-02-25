@@ -18,7 +18,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.widget.Toast;
 
-import org.codeaurora.QtiVideoCallConstants;
+import org.codeaurora.ims.QtiCallConstants;
 
 /**
  * Single point of entry for all outgoing and incoming calls.
@@ -110,9 +110,9 @@ public class CallIntentProcessor {
         }
 
         final int callDomain = intent.getIntExtra(
-                QtiVideoCallConstants.EXTRA_CALL_DOMAIN, QtiVideoCallConstants.DOMAIN_AUTOMATIC);
+                QtiCallConstants.EXTRA_CALL_DOMAIN, QtiCallConstants.DOMAIN_AUTOMATIC);
         Log.d(CallIntentProcessor.class, "callDomain = " + callDomain);
-        clientExtras.putInt(QtiVideoCallConstants.EXTRA_CALL_DOMAIN, callDomain);
+        clientExtras.putInt(QtiCallConstants.EXTRA_CALL_DOMAIN, callDomain);
 
         final int videoState = intent.getIntExtra(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE,
                 VideoProfile.STATE_AUDIO_ONLY);
