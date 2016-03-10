@@ -40,12 +40,15 @@ import android.util.ArrayMap;
 
 // TODO: Needed for move to system service: import com.android.internal.R;
 import com.android.internal.telecom.IInCallService;
+import com.android.internal.telecom.IVideoProvider;
 import com.google.common.collect.ImmutableCollection;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -54,6 +57,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * a binding to the {@link IInCallService} (implemented by the in-call app).
  */
 public final class InCallController extends CallsManagerListenerBase {
+
+    private Map<Call, IVideoProvider> mVideoProviderList;
     /**
      * Used to bind to the in-call app and triggers the start of communication between
      * this class and in-call app.
@@ -90,7 +95,12 @@ public final class InCallController extends CallsManagerListenerBase {
 
         @Override
         public void onVideoCallProviderChanged(Call call) {
-            updateCall(call);
+            Log.i(this, "InCallController onVideoCallProviderChanged");
+
+            synchronized(mVideoProviderList) {
+                mVideoProviderList.put(call, call.getVideoProvider());
+            }
+            updateCall(call, true);
         }
 
         @Override
@@ -152,6 +162,8 @@ public final class InCallController extends CallsManagerListenerBase {
         mContext = context;
         Resources resources = mContext.getResources();
 
+        mVideoProviderList = new HashMap<Call, IVideoProvider>();
+
         mInCallComponentName = new ComponentName(
                 resources.getString(R.string.ui_default_package),
                 resources.getString(R.string.incall_default_class));
@@ -166,12 +178,23 @@ public final class InCallController extends CallsManagerListenerBase {
             // Track the call if we don't already know about it.
             addCall(call);
 
+            boolean includeVideoProvider = false;
+            synchronized(mVideoProviderList) {
+                IVideoProvider cachedVideoProvider = mVideoProviderList.get(call);
+                includeVideoProvider =
+                        !Objects.equals(cachedVideoProvider, call.getVideoProvider());
+                Log.i(this, "onCallAdded includeVideoProvider: " + includeVideoProvider);
+                if (includeVideoProvider) {
+                    mVideoProviderList.put(call, call.getVideoProvider());
+                }
+            }
+
             for (Map.Entry<ComponentName, IInCallService> entry : mInCallServices.entrySet()) {
                 ComponentName componentName = entry.getKey();
                 IInCallService inCallService = entry.getValue();
 
                 ParcelableCall parcelableCall = toParcelableCall(call,
-                        componentName.equals(mInCallComponentName) /* includeVideoProvider */);
+                        includeVideoProvider);
                 try {
                     inCallService.addCall(parcelableCall);
                 } catch (RemoteException ignored) {
@@ -187,6 +210,19 @@ public final class InCallController extends CallsManagerListenerBase {
             // TODO: Wait for all messages to be delivered to the service before unbinding.
             unbind();
         }
+
+        synchronized(mVideoProviderList) {
+            for (Iterator<Map.Entry<Call, IVideoProvider>> it
+                    = mVideoProviderList.entrySet().iterator(); it.hasNext();) {
+                Map.Entry<Call, IVideoProvider> e = it.next();
+                if (e.getKey() == call) {
+                    Log.i(this, "onCallRemoved removing call from videoprovider list: %s", call);
+                    it.remove();
+                    break;
+                }
+            }
+        }
+
         call.removeListener(mCallListener);
         mCallIdMapper.removeCall(call);
     }
@@ -373,7 +409,7 @@ public final class InCallController extends CallsManagerListenerBase {
                     addCall(call);
 
                     inCallService.addCall(toParcelableCall(call,
-                            componentName.equals(mInCallComponentName) /* includeVideoProvider */));
+                            false /* includeVideoProvider */));
                 } catch (RemoteException ignored) {
                 }
             }
@@ -421,25 +457,25 @@ public final class InCallController extends CallsManagerListenerBase {
         }
     }
 
+    private void updateCall(Call call) {
+        updateCall(call, false /* videoProviderChanged */);
+    }
+
     /**
      * Informs all {@link InCallService} instances of the updated call information.  Changes to the
      * video provider are only communicated to the default in-call UI.
      *
      * @param call The {@link Call}.
      */
-    private void updateCall(Call call) {
-        if (call.getState() == CallState.CONNECTING) {
-            Log.d(this, "updateCall skip update for CONNECTING");
-            return;
-        }
+    private void updateCall(Call call, boolean videoProviderChanged) {
         if (!mInCallServices.isEmpty()) {
+            ParcelableCall parcelableCall = toParcelableCall(call,
+                    videoProviderChanged /* includeVideoProvider */);
+            Log.i(this, "Sending updateCall %s ==> %s", call, parcelableCall);
             for (Map.Entry<ComponentName, IInCallService> entry : mInCallServices.entrySet()) {
                 ComponentName componentName = entry.getKey();
                 IInCallService inCallService = entry.getValue();
-                ParcelableCall parcelableCall = toParcelableCall(call,
-                        componentName.equals(mInCallComponentName) /* includeVideoProvider */);
 
-                Log.v(this, "updateCall %s ==> %s", call, parcelableCall);
                 try {
                     inCallService.updateCall(parcelableCall);
                 } catch (RemoteException ignored) {
@@ -534,6 +570,7 @@ public final class InCallController extends CallsManagerListenerBase {
                 call.getCallerDisplayNamePresentation(),
                 call.getGatewayInfo(),
                 call.getTargetPhoneAccount(),
+                includeVideoProvider,
                 includeVideoProvider ? call.getVideoProvider() : null,
                 parentCallId,
                 childCallIds,
