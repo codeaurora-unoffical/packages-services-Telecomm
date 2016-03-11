@@ -38,6 +38,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.os.UserHandle;
 
 import android.telecom.TelecomManager;
 import android.telephony.SubscriptionManager;
@@ -987,6 +988,15 @@ public final class BluetoothPhoneServiceImpl {
                 boolean sendDialingFirst = mBluetoothCallState != bluetoothCallState &&
                         bluetoothCallState == CALL_STATE_ALERTING;
 
+                if (numActiveCalls > 0) {
+                    Log.i(TAG, "updateHeadsetWithCallState: Call active");
+                    boolean isCsCall = ((activeCall != null) &&
+                            !(activeCall.can(Connection.CAPABILITY_HIGH_DEF_AUDIO) ||
+                            activeCall.can(Connection.CAPABILITY_WIFI)));
+                    final Intent intent = new Intent(TelecomManager.ACTION_CALL_TYPE);
+                    intent.putExtra(TelecomManager.EXTRA_CALL_TYPE_CS, isCsCall);
+                    mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
+                }
                 mOldHeldCall = heldCall;
                 mNumActiveCalls = numActiveCalls;
                 mNumHeldCalls = numHeldCalls;
