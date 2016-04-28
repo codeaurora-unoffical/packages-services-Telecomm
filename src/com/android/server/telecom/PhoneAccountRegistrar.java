@@ -611,6 +611,9 @@ public final class PhoneAccountRegistrar {
         for (Listener l : mListeners) {
             l.onDefaultOutgoingChanged(this);
         }
+
+        Intent intent = new Intent("codeaurora.intent.action.DEFAULT_PHONE_ACCOUNT_CHANGED");
+        mContext.sendBroadcast(intent);
     }
 
     private void fireSimCallManagerChanged() {
