@@ -355,4 +355,24 @@ class InCallAdapter extends IInCallAdapter.Stub {
             Binder.restoreCallingIdentity(token);
         }
     }
+//TODO enable later once dependant changes are merged
+//    @Override
+    public void continueCallWithVideoState(String callId, int videoState) {
+        long token = Binder.clearCallingIdentity();
+        try {
+            synchronized (mLock) {
+                if (mCallIdMapper.isValidCallId(callId)) {
+                    Call call = mCallIdMapper.getCall(callId);
+                    if (call != null) {
+                        mCallsManager.continueCallWithVideoState(call, videoState);
+                    } else {
+                        Log.w(this, "continueCallWithVideoState, unknown call id: %s", callId);
+                    }
+                }
+            }
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
 }
