@@ -198,16 +198,7 @@ public final class InCallController extends CallsManagerListenerBase {
             // Track the call if we don't already know about it.
             addCall(call);
 
-            boolean includeVideoProvider = false;
-            synchronized(mVideoProviderList) {
-                IVideoProvider cachedVideoProvider = mVideoProviderList.get(call);
-                includeVideoProvider =
-                        !Objects.equals(cachedVideoProvider, call.getVideoProvider());
-                Log.i(this, "onCallAdded includeVideoProvider: " + includeVideoProvider);
-                if (includeVideoProvider) {
-                    mVideoProviderList.put(call, call.getVideoProvider());
-                }
-            }
+            boolean includeVideoProvider = maybeUpdateVideoProvider(call);
 
             for (Map.Entry<ComponentName, IInCallService> entry : mInCallServices.entrySet()) {
                 ComponentName componentName = entry.getKey();
@@ -223,6 +214,20 @@ public final class InCallController extends CallsManagerListenerBase {
             onAudioStateChanged(null, CallsManager.getInstance().getAudioState());
         }
         bind(false);
+    }
+
+    private boolean maybeUpdateVideoProvider(Call call) {
+        boolean includeVideoProvider = false;
+        synchronized(mVideoProviderList) {
+            IVideoProvider cachedVideoProvider = mVideoProviderList.get(call);
+            includeVideoProvider =
+                    !Objects.equals(cachedVideoProvider, call.getVideoProvider());
+            Log.i(this, "maybeUpdateVideoProvider includeVideoProvider: " + includeVideoProvider);
+            if (includeVideoProvider) {
+                mVideoProviderList.put(call, call.getVideoProvider());
+            }
+        }
+        return includeVideoProvider;
     }
 
     @Override
@@ -450,8 +455,10 @@ public final class InCallController extends CallsManagerListenerBase {
                     Log.i(this, "addCall after binding: %s", call);
                     addCall(call);
 
+                    maybeUpdateVideoProvider(call);
+
                     inCallService.addCall(toParcelableCall(call,
-                            false /* includeVideoProvider */));
+                            componentName.equals(mInCallComponentName) /* includeVideoProvider */));
                 } catch (RemoteException ignored) {
                 }
             }
