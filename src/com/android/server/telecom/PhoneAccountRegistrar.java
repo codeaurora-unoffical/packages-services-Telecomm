@@ -532,6 +532,7 @@ public final class PhoneAccountRegistrar {
         boolean isEnabled = false;
 
         PhoneAccount oldAccount = getPhoneAccount(account.getAccountHandle());
+        final int location = mState.accounts.indexOf(oldAccount);
         if (oldAccount != null) {
             mState.accounts.remove(oldAccount);
             isEnabled = oldAccount.isEnabled();
@@ -540,7 +541,11 @@ public final class PhoneAccountRegistrar {
             Log.i(this, "New phone account registered: " + account);
         }
 
-        mState.accounts.add(account);
+        if (location != -1) {
+            mState.accounts.add(location, account);
+        } else {
+            mState.accounts.add(account);
+        }
         // Reset enabled state to whatever the value was if the account was already registered,
         // or _true_ if this is a SIM-based account.  All SIM-based accounts are always enabled.
         account.setIsEnabled(
