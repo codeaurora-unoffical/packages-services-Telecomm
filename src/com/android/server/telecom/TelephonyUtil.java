@@ -18,10 +18,15 @@ package com.android.server.telecom;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.PhoneNumberUtils;
+
+import com.android.internal.telephony.CarrierAppUtils;
 
 /**
  * Utilities to deal with the system telephony services. The system telephony services are treated
@@ -63,5 +68,27 @@ public final class TelephonyUtil {
     public static boolean shouldProcessAsEmergency(Context context, Uri handle) {
         return handle != null && PhoneNumberUtils.isLocalEmergencyNumber(
                 context, handle.getSchemeSpecificPart());
+    }
+
+    /**
+     * Check is carrier one supported or not
+     */
+    public static boolean isCarrierOneSupported() {
+        CarrierAppUtils.CARRIER carrier = CarrierAppUtils.getCarrierId();
+        return (carrier != null && (CarrierAppUtils.CARRIER.TELEPHONY_CARRIER_ONE == carrier));
+    }
+
+    static boolean isLowBattery(Context context) {
+        if(!isCarrierOneSupported()) {
+            return false;
+        }
+
+        Intent batteryStatus = context.registerReceiver(null,
+                new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+
+        final int batteryLevel = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        //determine whether device is under low battery or not based on battery level
+        return (batteryLevel <= (context.getResources().getInteger(
+                com.android.internal.R.integer.config_lowBatteryWarningLevel)));
     }
 }

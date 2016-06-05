@@ -39,6 +39,7 @@ import android.telecom.ConnectionService;
 import android.telecom.DefaultDialerManager;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
+import android.telecom.VideoProfile;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
@@ -178,6 +179,64 @@ public final class PhoneAccountRegistrar {
         return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
+    private PhoneAccountHandle getUserSelectedOutgoingPhoneAccountForScheme(String uriScheme) {
+        final PhoneAccountHandle userSelected = getUserSelectedOutgoingPhoneAccount();
+
+        if (userSelected != null) {
+            // If there is a default PhoneAccount, ensure it supports calls to handles with the
+            // specified uriScheme.
+            final PhoneAccount userSelectedAccount = getPhoneAccountCheckCallingUser(userSelected);
+            if (userSelectedAccount != null && userSelectedAccount.supportsUriScheme(uriScheme)) {
+                return userSelected;
+            }
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Retrieves the video call outgoing phone account supporting the specified uriScheme.
+     * Note that if {@link #mCurrentUserHandle} does not have visibility into the current default
+     * {@code null} will be returned.
+     *
+     * @param uriScheme The URI scheme for the outgoing call.
+     * @return The {@link PhoneAccountHandle} to use.
+     */
+    private PhoneAccountHandle getVideoCallOutgoingPhoneAccountForScheme(String uriScheme) {
+        List<PhoneAccountHandle> outgoing = getVideoCallCapablePhoneAccounts(uriScheme, false);
+        switch (outgoing.size()) {
+            case 0:
+                // There are no accounts, so there can be no default
+                return null;
+            case 1:
+                // There is only one account, which is by definition the default.
+                return outgoing.get(0);
+            default:
+                // There are multiple accounts with no selected default
+                return null;
+        }
+    }
+
+    public PhoneAccountHandle getOutgoingPhoneAccountForVideoState(String uriScheme,
+            int videoState) {
+        return getOutgoingPhoneAccountForScheme(uriScheme, VideoProfile.isVideo(videoState));
+    }
+
+    private PhoneAccountHandle getOutgoingPhoneAccountForScheme(String uriScheme,
+            boolean isVideoCall) {
+        final PhoneAccountHandle userSelected =
+                getUserSelectedOutgoingPhoneAccountForScheme(uriScheme);
+        if (userSelected != null) {
+            return userSelected;
+        }
+
+        if (isVideoCall) {
+            return getVideoCallOutgoingPhoneAccountForScheme(uriScheme);
+        } else {
+            return getOutgoingPhoneAccountForScheme(uriScheme);
+        }
+    }
+
     /**
      * Retrieves the default outgoing phone account supporting the specified uriScheme. Note that if
      * {@link #mCurrentUserHandle} does not have visibility into the current default, {@code null}
@@ -187,15 +246,10 @@ public final class PhoneAccountRegistrar {
      * @return The {@link PhoneAccountHandle} to use.
      */
     public PhoneAccountHandle getOutgoingPhoneAccountForScheme(String uriScheme) {
-        final PhoneAccountHandle userSelected = getUserSelectedOutgoingPhoneAccount();
-
+        final PhoneAccountHandle userSelected =
+                getUserSelectedOutgoingPhoneAccountForScheme(uriScheme);
         if (userSelected != null) {
-            // If there is a default PhoneAccount, ensure it supports calls to handles with the
-            // specified uriScheme.
-            final PhoneAccount userSelectedAccount = getPhoneAccountCheckCallingUser(userSelected);
-            if (userSelectedAccount.supportsUriScheme(uriScheme)) {
-                return userSelected;
-            }
+            return userSelected;
         }
 
         List<PhoneAccountHandle> outgoing = getCallCapablePhoneAccounts(uriScheme, false);
@@ -467,6 +521,19 @@ public final class PhoneAccountRegistrar {
 
     public List<PhoneAccount> getAllPhoneAccounts() {
         return getPhoneAccounts(0, null, null, false);
+    }
+
+   /**
+     * Retrieves a list of all video call capable phone accounts supporting the
+     * specified URI scheme.
+     *
+     * @param uriScheme The URI scheme.
+     * @return The phone account handles.
+     */
+    public List<PhoneAccountHandle> getVideoCallCapablePhoneAccounts(
+            String uriScheme, boolean includeDisabledAccounts) {
+        return getPhoneAccountHandles(
+                PhoneAccount.CAPABILITY_VIDEO_CALLING, uriScheme, null, includeDisabledAccounts);
     }
 
     /**
