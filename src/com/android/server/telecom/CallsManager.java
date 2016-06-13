@@ -26,6 +26,7 @@ import android.os.SystemProperties;
 import android.os.Trace;
 import android.provider.CallLog.Calls;
 import android.telecom.CallAudioState;
+import android.provider.Settings;
 import android.telecom.Conference;
 import android.telecom.Connection;
 import android.telecom.DisconnectCause;
@@ -53,6 +54,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.codeaurora.ims.QtiCallConstants;
 
 /**
  * Singleton.
@@ -657,10 +660,23 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
         Log.d(this, "startOutgoingCall :: isAddParticipant=" + isAddParticipant
                 + " isSkipSchemaOrConfUri=" + isSkipSchemaOrConfUri + " scheme=" + scheme);
 
-        List<PhoneAccountHandle> accounts =
-                mPhoneAccountRegistrar.getCallCapablePhoneAccounts(scheme, false);
+        List<PhoneAccountHandle> accounts = null;
+        if (VideoProfile.isVideo(call.getVideoState())) {
+            accounts = mPhoneAccountRegistrar.getVideoCallCapablePhoneAccounts(scheme, false);
+        } else {
+            accounts = mPhoneAccountRegistrar.getCallCapablePhoneAccounts(scheme, false);
+        }
 
         Log.v(this, "startOutgoingCall found accounts = " + accounts);
+
+        // Only dial with the requested phoneAccount if it is still valid. Otherwise treat this call
+        // as if a phoneAccount was not specified (does the default behavior instead).
+        // Note: We will not attempt to dial with a requested phoneAccount if it is disabled.
+        if (phoneAccountHandle != null) {
+            if (!accounts.contains(phoneAccountHandle)) {
+                phoneAccountHandle = null;
+            }
+        }
 
         if (mForegroundCall != null && TelephonyManager.getDefault().getMultiSimConfiguration()
                 != TelephonyManager.MultiSimVariants.DSDA) {
@@ -678,20 +694,12 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
             }
         }
 
-        // Only dial with the requested phoneAccount if it is still valid. Otherwise treat this call
-        // as if a phoneAccount was not specified (does the default behavior instead).
-        // Note: We will not attempt to dial with a requested phoneAccount if it is disabled.
-        if (phoneAccountHandle != null) {
-            if (!accounts.contains(phoneAccountHandle)) {
-                phoneAccountHandle = null;
-            }
-        }
-
         if (phoneAccountHandle == null) {
-            // No preset account, check if default exists that supports the URI scheme for the
-            // handle.
+            // No preset account, check if default exists that supports the URI scheme/VideoState
+            // for the handle.
             phoneAccountHandle =
-                    mPhoneAccountRegistrar.getOutgoingPhoneAccountForScheme(scheme);
+                    mPhoneAccountRegistrar.getOutgoingPhoneAccountForVideoState(
+                    scheme, call.getVideoState());
         }
 
         call.setTargetPhoneAccount(phoneAccountHandle);
@@ -725,8 +733,13 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
                     CallState.CONNECTING,
                     phoneAccountHandle == null ? "no-handle" : phoneAccountHandle.toString());
         }
-
         call.setIntentExtras(extras);
+
+        Bundle callExtras = new Bundle();
+        //pack low battery information for it to be available to InCallUI for further processing
+        callExtras.putBoolean(QtiCallConstants.LOW_BATTERY_EXTRA_KEY,
+                TelephonyUtil.isLowBattery(mContext));
+        call.setExtras(callExtras);
 
         // Do not add the call if it is a potential MMI code.
         if ((isPotentialMMICode(handle) || isPotentialInCallMMICode) && !needsAccountSelection) {
@@ -779,12 +792,21 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
             call.setTargetPhoneAccount(null);
         }
 
-        if (call.getTargetPhoneAccount() != null || call.isEmergencyCall()) {
+        // when UE is under low battery, video call will be placed based on user confirmation
+        // with continueCallWithVideoState API
+        final boolean isVideoCallLowBattery = VideoProfile.isVideo(videoState) &&
+                TelephonyUtil.isLowBattery(mContext);
+        Log.d(this, "isVideoCallLowBattery = " + isVideoCallLowBattery);
+
+        if ((call.getTargetPhoneAccount() != null && !isVideoCallLowBattery) ||
+                call.isEmergencyCall()) {
             if (!call.isEmergencyCall()) {
                 updateLchStatus(call.getTargetPhoneAccount().getId());
             }
             // If the account has been set, proceed to place the outgoing call.
             // Otherwise the connection will be initiated when the account is set by the user.
+            // Additionally, proceed to place outgoing video call only when device is not under
+            // low battery.
             call.startCreateConnection(mPhoneAccountRegistrar);
         }
     }
@@ -1060,6 +1082,15 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
         mProximitySensorManager.turnOff(screenOnImmediately);
     }
 
+    void continueCallWithVideoState(Call call, int videoState) {
+        if (!mCalls.contains(call)) {
+            Log.w(this, "Attempted to continue unknown call %s", call);
+        } else {
+            call.setVideoState(videoState);
+            call.startCreateConnection(mPhoneAccountRegistrar);
+        }
+    }
+
     void phoneAccountSelected(Call call, PhoneAccountHandle account, boolean setDefault) {
         if (!mCalls.contains(call)) {
             Log.i(this, "Attempted to add account to unknown call %s", call);
@@ -1259,6 +1290,13 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
      * Returns true if telecom supports adding another top-level call.
      */
     boolean canAddCall() {
+        boolean isDeviceProvisioned = Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 0) != 0;
+        if (!isDeviceProvisioned) {
+            Log.d(TAG, "Device not provisioned, canAddCall is false.");
+            return false;
+        }
+
         if (getFirstCallWithState(OUTGOING_CALL_STATES) != null) {
             return false;
         }
