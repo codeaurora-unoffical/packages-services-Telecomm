@@ -781,6 +781,7 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
 
         call.setHandle(uriHandle);
         call.setGatewayInfo(gatewayInfo);
+
         // Auto-enable speakerphone if the originating intent specified to do so, or if the call
         // is a video call or if the phone is docked.
         call.setStartWithSpeakerphoneOn(speakerphoneOn || isSpeakerphoneAutoEnabled(videoState)
@@ -1063,6 +1064,13 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
       */
     void setAudioRoute(int route) {
         Log.d(this, "Audio routed by user");
+        Call call = getConnectingCall();
+        if (call != null && call.getStartWithSpeakerphoneOn()) {
+            /* There is a change in audio routing for connecting call.
+             * So, honour the new audio routing preferance.
+             */
+            call.setStartWithSpeakerphoneOn(false);
+        }
         mCallAudioManager.mUserSetAudioRoute = true;
         mCallAudioManager.setAudioRoute(route);
         mCallAudioManager.mUserSetAudioRoute = false;
@@ -1351,6 +1359,11 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
     Call getHeldCall() {
         return getFirstCallWithState(CallState.ON_HOLD);
     }
+
+    Call getConnectingCall() {
+        return getFirstCallWithState(CallState.CONNECTING);
+    }
+
 
     int getNumHeldCalls() {
         int count = 0;
