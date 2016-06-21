@@ -2283,7 +2283,10 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
     private void updateLchStatus(String subInConversation) {
         Call removeFromLch = null;
         Log.d(this, "updateLchStatus subInConversation: " + subInConversation);
-        if (subInConversation != null && subInConversation.contains("sip")) {
+        if ((subInConversation != null && (subInConversation.contains("sip")
+                || subInConversation.contains("@")))
+                || (TelephonyManager.getDefault()
+                        .getMultiSimConfiguration() != TelephonyManager.MultiSimVariants.DSDA)) {
             return;
         }
         for (PhoneAccountHandle ph : getPhoneAccountRegistrar().getSimPhoneAccounts()) {
