@@ -65,39 +65,44 @@ abstract class ServiceBinder {
          * @param call The call for which we are being bound.
          */
         void bind(BindCallback callback, Call call) {
-            Log.d(ServiceBinder.this, "bind()");
+            synchronized (mLock) {
+                Log.d(ServiceBinder.this, "bind()");
 
-            // Reset any abort request if we're asked to bind again.
-            clearAbort();
+                // Reset any abort request if we're asked to bind again.
+                clearAbort();
 
-            if (!mCallbacks.isEmpty()) {
-                // Binding already in progress, append to the list of callbacks and bail out.
-                mCallbacks.add(callback);
-                return;
-            }
-
-            mCallbacks.add(callback);
-            if (mServiceConnection == null) {
-                Intent serviceIntent = new Intent(mServiceAction).setComponent(mComponentName);
-                ServiceConnection connection = new ServiceBinderConnection(call);
-
-                Log.event(call, Log.Events.BIND_CS, mComponentName);
-                final int bindingFlags = Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE;
-                final boolean isBound;
-                if (mUserHandle != null) {
-                    isBound = mContext.bindServiceAsUser(serviceIntent, connection, bindingFlags,
-                            mUserHandle);
-                } else {
-                    isBound = mContext.bindService(serviceIntent, connection, bindingFlags);
-                }
-                if (!isBound) {
-                    handleFailedConnection();
+                if (!mCallbacks.isEmpty()) {
+                    // Binding already in progress, append to the list of callbacks and bail out.
+                    mCallbacks.add(callback);
                     return;
                 }
-            } else {
-                Log.d(ServiceBinder.this, "Service is already bound.");
-                Preconditions.checkNotNull(mBinder);
-                handleSuccessfulConnection();
+
+                mCallbacks.add(callback);
+                if (mServiceConnection == null) {
+                    Intent serviceIntent = new Intent(mServiceAction)
+                            .setComponent(mComponentName);
+                    ServiceConnection connection = new ServiceBinderConnection(call);
+
+                    Log.event(call, Log.Events.BIND_CS, mComponentName);
+                    final int bindingFlags
+                            = Context.BIND_AUTO_CREATE | Context.BIND_FOREGROUND_SERVICE;
+                    final boolean isBound;
+                    if (mUserHandle != null) {
+                        isBound = mContext.bindServiceAsUser(serviceIntent, connection,
+                                bindingFlags, mUserHandle);
+                    } else {
+                        isBound = mContext.bindService(serviceIntent,
+                                connection, bindingFlags);
+                    }
+                    if (!isBound) {
+                        handleFailedConnection();
+                        return;
+                    }
+                } else {
+                    Log.d(ServiceBinder.this, "Service is already bound.");
+                    Preconditions.checkNotNull(mBinder);
+                    handleSuccessfulConnection();
+                }
             }
         }
     }
@@ -238,14 +243,16 @@ abstract class ServiceBinder {
      * Unbinds from the service if already bound, no-op otherwise.
      */
     final void unbind() {
-        if (mServiceConnection == null) {
-            // We're not yet bound, so queue up an abort request.
-            mIsBindingAborted = true;
-        } else {
-            logServiceDisconnected("unbind");
-            mContext.unbindService(mServiceConnection);
-            mServiceConnection = null;
-            setBinder(null);
+        synchronized (mLock) {
+            if (mServiceConnection == null) {
+                // We're not yet bound, so queue up an abort request.
+                mIsBindingAborted = true;
+            } else {
+                logServiceDisconnected("unbind");
+                mContext.unbindService(mServiceConnection);
+                mServiceConnection = null;
+                setBinder(null);
+            }
         }
     }
 
