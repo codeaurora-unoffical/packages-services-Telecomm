@@ -87,6 +87,7 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements 
     private static final int CALL_LOG_COLUMN_DURATION = 4;
     private static final int CALL_LOG_COLUMN_TYPE = 5;
 
+    private static final int MISSED_IMS_TYPE = 7;
     private static final int MISSED_CALL_NOTIFICATION_ID = 1;
 
     private final Context mContext;
@@ -447,6 +448,8 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements 
         // setup query spec, look for all Missed calls that are new.
         StringBuilder where = new StringBuilder("type=");
         where.append(Calls.MISSED_TYPE);
+        where.append(" OR type=");
+        where.append(MISSED_IMS_TYPE);
         where.append(" AND new=1");
         where.append(" AND is_read=0");
 
