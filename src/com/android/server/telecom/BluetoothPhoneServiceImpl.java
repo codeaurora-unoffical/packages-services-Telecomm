@@ -710,6 +710,7 @@ public final class BluetoothPhoneServiceImpl {
             addressUri = call.getHandle();
         }
         String address = addressUri == null ? null : addressUri.getSchemeSpecificPart();
+        if (address != null) address = PhoneNumberUtils.stripSeparators(address);
         int addressType = address == null ? -1 : PhoneNumberUtils.toaFromString(address);
 
         if (shouldLog) {
