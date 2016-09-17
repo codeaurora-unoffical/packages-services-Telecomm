@@ -173,6 +173,14 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
 
     private Runnable mStopTone;
 
+    // Two global variables used to handle the Emergency Call when there
+    // is no room available for emergency call. Buffer the Emergency Call
+    // in mPendingMOEmerCall until the Current Active call is disconnected
+    // successfully and place the mPendingMOEmerCall followed by clearing
+    // buffer.
+    private Call mPendingMOEmerCall = null;
+    private Call mDisconnectingCall = null;
+
     /**
      * Initializes the required Telecom components.
      */
@@ -744,7 +752,10 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
         // Do not add the call if it is a potential MMI code.
         if ((isPotentialMMICode(handle) || isPotentialInCallMMICode) && !needsAccountSelection) {
             call.addListener(this);
-        } else if (!mCalls.contains(call)) {
+        // If call is Emergency type and marked it as Pending, call would not be added
+        // in mCalls here. It will be handled when the current active call (mDisconnectingCall)
+        // is disconnected successfully.
+        } else if (!mCalls.contains(call) && mPendingMOEmerCall == null) {
             // We check if mCalls already contains the call because we could potentially be reusing
             // a call which was previously added (See {@link #getNewOutgoingCall}).
             addCall(call);
@@ -804,11 +815,15 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
             if (!call.isEmergencyCall()) {
                 updateLchStatus(call.getTargetPhoneAccount().getId());
             }
-            // If the account has been set, proceed to place the outgoing call.
-            // Otherwise the connection will be initiated when the account is set by the user.
-            // Additionally, proceed to place outgoing video call only when device is not under
-            // low battery.
-            call.startCreateConnection(mPhoneAccountRegistrar);
+            //Block to initiate Emregency call now as the current active call
+            //is not yet disconnected.
+            if (mPendingMOEmerCall == null) {
+                // If the account has been set, proceed to place the outgoing call.
+                // Otherwise the connection will be initiated when the account is set by the user.
+                // Additionally, proceed to place outgoing video call only when device is not under
+                // low battery.
+                call.startCreateConnection(mPhoneAccountRegistrar);
+            }
         }
     }
 
@@ -1203,6 +1218,14 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
                 phAcc.unSetBit(PhoneAccount.LCH);
                 manageDsdaInCallTones(false);
             }
+        }
+        // Emergency MO call is still pending and current active call is
+        // disconnected succesfully. So initiating pending Emergency call
+        // now and clearing both pending and Disconnectcalls.
+        if (mPendingMOEmerCall != null && mDisconnectingCall == call) {
+            addCall(mPendingMOEmerCall);
+            mPendingMOEmerCall.startCreateConnection(mPhoneAccountRegistrar);
+            clearPendingMOEmergencyCall();
         }
     }
 
@@ -1860,6 +1883,12 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
                 == TelephonyManager.MultiSimVariants.DSDA) {
             return makeRoomForOutgoingCallForDsda(call, isEmergency);
         }
+        // Reject If there is any Incoming Call while initiating an
+        // an Emergency Call.
+        if (isEmergency && hasMaximumRingingCalls()) {
+            Call rinigingCall = getRingingCall();
+            rinigingCall.reject(false, null);
+        }
         if (hasMaximumLiveCalls()) {
             // NOTE: If the amount of live calls changes beyond 1, this logic will probably
             // have to change.
@@ -1881,6 +1910,12 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
                     // user tries to make two outgoing calls to different emergency call numbers,
                     // we will try to connect the first outgoing call.
                     outgoingCall.disconnect();
+                    // buffer this call in to mPendingMOEmerCall and do not initiate this call
+                    // until the current outgoing call mDisconnectingCall is disconnected
+                    // successfully. Emergency Call would be initiated upon receiving the
+                    // Disconnection response from lower layers.
+                    mDisconnectingCall = outgoingCall;
+                    mPendingMOEmerCall = call;
                     return true;
                 }
                 if (outgoingCall.getState() == CallState.SELECT_PHONE_ACCOUNT) {
@@ -1898,6 +1933,12 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
                     // Kill the current active call, this is easier then trying to disconnect a
                     // holding call and hold an active call.
                     liveCall.disconnect();
+                    // buffer this call in to mPendingMOEmerCall and do not initiate this call
+                    // until the current live call "mDisconnectingCall" is disconnected
+                    // successfully. Emergency Call would be initiated upon receiving the
+                    // Disconnection response from lower layers.
+                    mDisconnectingCall = liveCall;
+                    mPendingMOEmerCall = call;
                     return true;
                 }
                 return false;  // No more room!
@@ -2410,5 +2451,10 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
                 listener.onMergeFailed(call);
             }
         }
+    }
+
+    public void clearPendingMOEmergencyCall() {
+        mPendingMOEmerCall = null;
+        mDisconnectingCall = null;
     }
 }
