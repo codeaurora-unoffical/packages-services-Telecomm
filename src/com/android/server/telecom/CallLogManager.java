@@ -147,7 +147,7 @@ final class CallLogManager extends CallsManagerListenerBase {
         }
 
         // TODO(vt): Once data usage is available, wire it up here.
-        int callFeatures = getCallFeatures(call.getVideoStateHistory());
+        int callFeatures = getCallFeatures(call);
         logCall(call.getCallerInfo(), logNumber, call.getHandlePresentation(),
                 toPreciseLogType(call,callLogType), callFeatures, accountHandle,
                 creationTime, age, null, call.isEmergencyCall());
@@ -205,13 +205,17 @@ final class CallLogManager extends CallsManagerListenerBase {
      * Based on the video state of the call, determines the call features applicable for the call.
      *
      * @param videoState The video state.
-     * @return The call features.
+     * @return The call features. Refer Calls.java for supported call features.
      */
-    private static int getCallFeatures(int videoState) {
-        if (VideoProfile.isVideo(videoState)) {
-            return Calls.FEATURES_VIDEO;
+    private static int getCallFeatures(Call call) {
+        int feature = 0 ;
+        if (VideoProfile.isVideo(call.getVideoStateHistory())) {
+            feature = Calls.FEATURES_VIDEO;
+        } else if (RcsCallHandler.getInstance().getEnrichCallData(call) != null
+                && RcsCallHandler.getInstance().getEnrichCallData(call).isValid()) {
+            feature = Calls.FEATURES_ENRICHED;
         }
-        return 0;
+        return feature;
     }
 
     /**

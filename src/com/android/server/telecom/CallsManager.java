@@ -56,6 +56,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.codeaurora.ims.QtiCallConstants;
+import org.codeaurora.rcscommon.CallComposerData;
+import org.codeaurora.rcscommon.RcsManager;
 
 /**
  * Singleton.
@@ -226,6 +228,8 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
         mListeners.add(mHeadsetMediaButton);
         mListeners.add(mProximitySensorManager);
         mListeners.add(mViceNotificationImpl);
+
+        RcsCallHandler.init(context, this);
 
         mMissedCallNotifier.updateOnStartup(
                 mLock, this, mContactsAsyncHelper, mCallerInfoAsyncQueryFactory);
@@ -636,6 +640,10 @@ public class CallsManager extends Call.ListenerBase implements VideoProviderProx
         if (extras!=null) {
             call.setVideoState(extras.getInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE,
                     VideoProfile.STATE_AUDIO_ONLY));
+            phoneAccountHandle = RcsCallHandler.getInstance()
+                   .getPreferredRcsAccountHandler(handle.getScheme(),
+                   new CallComposerData(extras.getBundle(RcsManager.ENRICH_CALL_INTENT_EXTRA)),
+                   phoneAccountHandle);
         }
 
         boolean isAddParticipant = ((extras != null) && (extras.getBoolean(

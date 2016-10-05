@@ -19,6 +19,8 @@ import android.telephony.PhoneNumberUtils;
 import android.widget.Toast;
 
 import org.codeaurora.ims.QtiCallConstants;
+import org.codeaurora.rcscommon.CallComposerData;
+import org.codeaurora.rcscommon.RcsManager;
 
 /**
  * Single point of entry for all outgoing and incoming calls.
@@ -136,12 +138,25 @@ public class CallIntentProcessor {
             clientExtras.putString(TelecomManager.EXTRA_CALL_SUBJECT, callsubject);
         }
 
+        CallComposerData callComposerData = null;
+        if (RcsManager.getInstance(context).isEnrichCallFeatureEnabled() && intent != null) {
+            callComposerData = intent.getParcelableExtra(RcsManager.ENRICH_CALL_INTENT_EXTRA);
+        }
+
+        if (callComposerData != null) {
+            clientExtras.putBundle(RcsManager.ENRICH_CALL_INTENT_EXTRA,
+                    callComposerData.getBundle());
+        }
+
         final boolean isPrivilegedDialer = intent.getBooleanExtra(KEY_IS_PRIVILEGED_DIALER, false);
 
         // Send to CallsManager to ensure the InCallUI gets kicked off before the broadcast returns
         Call call = callsManager.startOutgoingCall(handle, phoneAccountHandle, clientExtras);
 
         if (call != null) {
+            if(callComposerData != null) {
+                RcsCallHandler.getInstance().updateCallComposerData(callComposerData);
+            }
             // Asynchronous calls should not usually be made inside a BroadcastReceiver because once
             // onReceive is complete, the BroadcastReceiver's process runs the risk of getting
             // killed if memory is scarce. However, this is OK here because the entire Telecom

@@ -38,7 +38,8 @@ LOCAL_RESOURCE_DIR := \
 LOCAL_JAVA_LIBRARIES := \
         android.test.runner \
         telephony-common \
-        ims-common
+        ims-common \
+        rcscommon
 
 LOCAL_AAPT_FLAGS := \
     --auto-add-overlay \
