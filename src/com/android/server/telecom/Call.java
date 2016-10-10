@@ -1047,6 +1047,9 @@ public class Call implements CreateConnectionResponse {
                         // The first listener to handle this wins. A return value of true means that
                         // the listener will handle the disconnection process later and so we
                         // should not continue it here.
+                        // There is a chance that this call may be reused, in which case
+                        // mCreateConnectionProcessor must be reset to null.
+                        mCreateConnectionProcessor = null;
                         setLocallyDisconnecting(false);
                         return;
                     }
