@@ -90,12 +90,6 @@ final class CallLogManager extends CallsManagerListenerBase {
     private static final String CALL_TYPE = "callType";
     private static final String CALL_DURATION = "duration";
 
-    /* Temporarily remove below values from "framework/base" due to the code of framework/base
-        can't merge to atel.lnx.1.0-dev.1.0. */
-    private static final int INCOMING_IMS_TYPE = 5;
-    private static final int OUTGOING_IMS_TYPE = 6;
-    private static final int MISSED_IMS_TYPE = 7;
-
     public CallLogManager(Context context) {
         mContext = context;
     }
@@ -309,20 +303,35 @@ final class CallLogManager extends CallsManagerListenerBase {
     private static final int toPreciseLogType(Call call, int callLogType) {
         final boolean isHighDefAudioCall =
                (call != null) && call.can(Connection.CAPABILITY_HIGH_DEF_AUDIO);
+        final boolean isWifiCall =
+               (call != null) && call.can(Connection.CAPABILITY_WIFI);
         Log.d(TAG, "callCapabilities: " + call.getConnectionCapabilities()
-                + "isHighDefAudioCall: " + isHighDefAudioCall);
-        if(!isHighDefAudioCall) {
+                + "isHighDefAudioCall: " + isHighDefAudioCall
+                + "isWifiCall: " + isWifiCall);
+        if (!isHighDefAudioCall && !isWifiCall) {
             return callLogType;
         }
         switch (callLogType) {
             case Calls.INCOMING_TYPE :
-                callLogType = INCOMING_IMS_TYPE;
+                if (isWifiCall) {
+                    callLogType = Calls.INCOMING_WIFI_TYPE;
+                } else {
+                    callLogType = TelephonyUtil.INCOMING_IMS_TYPE;
+                }
                 break;
             case Calls.OUTGOING_TYPE :
-                callLogType = OUTGOING_IMS_TYPE;
+                if (isWifiCall) {
+                    callLogType = Calls.OUTGOING_WIFI_TYPE;
+                } else {
+                    callLogType = TelephonyUtil.OUTGOING_IMS_TYPE;
+                }
                 break;
             case Calls.MISSED_TYPE :
-                callLogType = MISSED_IMS_TYPE;
+                if (isWifiCall) {
+                    callLogType = Calls.MISSED_WIFI_TYPE;
+                } else {
+                    callLogType = TelephonyUtil.MISSED_IMS_TYPE;
+                }
                 break;
             default:
                 //Normal cs call, no change
