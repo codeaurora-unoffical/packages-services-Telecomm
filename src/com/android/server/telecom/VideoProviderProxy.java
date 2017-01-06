@@ -112,6 +112,13 @@ public class VideoProviderProxy extends Connection.VideoProvider {
         mCall = call;
     }
 
+    public void clearVideoCallback() {
+        try {
+            mConectionServiceVideoProvider.removeVideoCallback(mVideoCallListenerBinder);
+        } catch (RemoteException e) {
+        }
+    }
+
     /**
      * IVideoCallback stub implementation.  An instance of this class receives callbacks from the
      * {@code ConnectionService}'s video provider.
