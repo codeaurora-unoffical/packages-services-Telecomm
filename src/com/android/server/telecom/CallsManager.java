@@ -119,6 +119,7 @@ public class CallsManager extends Call.ListenerBase
         void onVideoStateChanged(Call call, int previousVideoState, int newVideoState);
         void onCanAddCallChanged(boolean canAddCall);
         void onSessionModifyRequestReceived(Call call, VideoProfile videoProfile);
+        void onSessionModifyRequestSent(VideoProfile fromProfile, VideoProfile toProfile);
         void onHoldToneRequested(Call call);
         void onExternalCallChanged(Call call, boolean isExternalCall);
     }
@@ -653,6 +654,22 @@ public class CallsManager extends Call.ListenerBase
 
         for (CallsManagerListener listener : mListeners) {
             listener.onSessionModifyRequestReceived(call, videoProfile);
+        }
+    }
+
+    /**
+     * Handles session modification requests sent
+     *
+     * @param fromProfile The video properties prior to the request.
+     * @param toProfile The video properties with the requested changes made.
+     */
+    @Override
+    public void onSessionModifyRequestSent(VideoProfile fromProfile, VideoProfile toProfile) {
+        Log.v(TAG, "onSessionModifyRequestSent : fromProfile = " + fromProfile +
+                " toProfile = " + toProfile);
+
+        for (CallsManagerListener listener : mListeners) {
+            listener.onSessionModifyRequestSent(fromProfile, toProfile);
         }
     }
 

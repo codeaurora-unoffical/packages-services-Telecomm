@@ -257,6 +257,30 @@ public class CallAudioManager extends CallsManagerListenerBase {
     }
 
     /**
+     * Handles session modification requests sent
+     *
+     * @param fromProfile The video properties prior to the request.
+     * @param toProfile The video properties with the requested changes made.
+     */
+    @Override
+    public void onSessionModifyRequestSent(VideoProfile fromProfile, VideoProfile toProfile) {
+        Log.d(LOG_TAG, "onSessionModifyRequestSent : fromProfile = " + fromProfile +
+                " toProfile = " + toProfile);
+
+        if (toProfile == null) {
+            return;
+        }
+
+        final int videoState = toProfile.getVideoState();
+
+        final int fallbackAudioRoute = VideoProfile.isVideo(videoState) ?
+                CallAudioState.ROUTE_SPEAKER : CallAudioState.ROUTE_EARPIECE;
+        mCallAudioRouteStateMachine.sendMessageWithSessionInfo(
+                        CallAudioRouteStateMachine.SET_FALLBACK_AUDIO_ROUTE_HINT,
+                        fallbackAudioRoute);
+    }
+
+    /**
      * Play or stop a call hold tone for a call.  Triggered via
      * {@link Connection#sendConnectionEvent(String)} when the
      * {@link Connection#EVENT_ON_HOLD_TONE_START} event or

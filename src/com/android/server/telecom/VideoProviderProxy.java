@@ -47,6 +47,7 @@ public class VideoProviderProxy extends Connection.VideoProvider {
      */
     interface Listener {
         void onSessionModifyRequestReceived(Call call, VideoProfile videoProfile);
+        void onSessionModifyRequestSent(VideoProfile fromProfile, VideoProfile toProfile);
     }
 
     /**
@@ -385,6 +386,10 @@ public class VideoProviderProxy extends Connection.VideoProvider {
                     toProfile.getVideoState());
             try {
                 mConectionServiceVideoProvider.sendSessionModifyRequest(fromProfile, toProfile);
+                // Inform other Telecom components of the session modification request.
+                for (Listener listener : mListeners) {
+                    listener.onSessionModifyRequestSent(fromProfile, toProfile);
+                }
             } catch (RemoteException e) {
             }
         }
