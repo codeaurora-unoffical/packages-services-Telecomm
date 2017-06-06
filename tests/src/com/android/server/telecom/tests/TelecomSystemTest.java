@@ -74,7 +74,6 @@ import com.android.server.telecom.HeadsetMediaButton;
 import com.android.server.telecom.HeadsetMediaButtonFactory;
 import com.android.server.telecom.InCallWakeLockController;
 import com.android.server.telecom.InCallWakeLockControllerFactory;
-import com.android.server.telecom.InterruptionFilterProxy;
 import com.android.server.telecom.MissedCallNotifier;
 import com.android.server.telecom.PhoneAccountRegistrar;
 import com.android.server.telecom.PhoneNumberUtilsAdapter;
@@ -173,29 +172,11 @@ public class TelecomSystemTest extends TelecomTestCase {
     }
     PhoneNumberUtilsAdapter mPhoneNumberUtilsAdapter = new EmergencyNumberUtilsAdapter();
 
-    public static class MockInterruptionFilterProxy implements InterruptionFilterProxy {
-        private int mInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL;
-        @Override
-        public void setInterruptionFilter(int interruptionFilter) {
-            mInterruptionFilter = interruptionFilter;
-        }
-
-        @Override
-        public int getCurrentInterruptionFilter() {
-            return mInterruptionFilter;
-        }
-
-        @Override
-        public String getInterruptionModeInitiator() {
-            return "com.android.server.telecom";
-        }
-    }
     @Mock HeadsetMediaButton mHeadsetMediaButton;
     @Mock ProximitySensorManager mProximitySensorManager;
     @Mock InCallWakeLockController mInCallWakeLockController;
     @Mock BluetoothPhoneServiceImpl mBluetoothPhoneServiceImpl;
     @Mock AsyncRingtonePlayer mAsyncRingtonePlayer;
-    @Mock InterruptionFilterProxy mInterruptionFilterProxy;
     @Mock IncomingCallNotifier mIncomingCallNotifier;
 
     final ComponentName mInCallServiceComponentNameX =
@@ -426,7 +407,6 @@ public class TelecomSystemTest extends TelecomTestCase {
                 mTimeoutsAdapter,
                 mAsyncRingtonePlayer,
                 mPhoneNumberUtilsAdapter,
-                mInterruptionFilterProxy,
                 mIncomingCallNotifier);
 
         mComponentContextFixture.setTelecomManager(new TelecomManager(
@@ -732,6 +712,10 @@ public class TelecomSystemTest extends TelecomTestCase {
         // Wait for the callback in ConnectionService#onAdapterAttached to execute.
         waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
 
+        // Ensure callback to CS on successful creation happened.
+        verify(connectionServiceFixture.getTestDouble(), timeout(TEST_TIMEOUT))
+                .createConnectionComplete(anyString(), any());
+
         assertEquals(startingNumCalls + 1, mInCallServiceFixtureX.mCallById.size());
         assertEquals(startingNumCalls + 1, mInCallServiceFixtureY.mCallById.size());
 
@@ -779,6 +763,12 @@ public class TelecomSystemTest extends TelecomTestCase {
 
         // Wait for the handler to start the CallerInfo lookup
         waitForHandlerAction(new Handler(Looper.getMainLooper()), TEST_TIMEOUT);
+
+        // Ensure callback to CS on successful creation happened.
+        verify(connectionServiceFixture.getTestDouble(), timeout(TEST_TIMEOUT))
+                .createConnectionComplete(anyString(), any());
+
+
         // Process the CallerInfo lookup reply
         mCallerInfoAsyncQueryFactoryFixture.mRequests.forEach(
                 CallerInfoAsyncQueryFactoryFixture.Request::reply);

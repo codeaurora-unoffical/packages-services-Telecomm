@@ -17,6 +17,7 @@
 package com.android.server.telecom;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -225,7 +226,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
     /**
      * The post-dial digits that were dialed after the network portion of the number
      */
-    private final String mPostDialDigits;
+    private String mPostDialDigits;
 
     /**
      * The secondary line number that an incoming call has been received on if the SIM subscription
@@ -309,6 +310,12 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
     private DisconnectCause mDisconnectCause = new DisconnectCause(DisconnectCause.UNKNOWN);
 
     private Bundle mIntentExtras = new Bundle();
+
+    /**
+     * The {@link Intent} which originally created this call.  Only populated when we are putting a
+     * call into a pending state and need to pick up initiation of the call later.
+     */
+    private Intent mOriginalCallIntent = null;
 
     /** Set of listeners on this call.
      *
@@ -571,6 +578,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
     }
 
     public void destroy() {
+        // We should not keep these bitmaps around because the Call objects may be held for logging
+        // purposes.
+        // TODO: Make a container object that only stores the information we care about for Logging.
+        if (mCallerInfo != null) {
+            mCallerInfo.cachedPhotoIcon = null;
+            mCallerInfo.cachedPhoto = null;
+        }
         Log.addEvent(this, LogUtils.Events.DESTROYED);
     }
 
@@ -820,6 +834,10 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
 
     public Uri getHandle() {
         return mHandle;
+    }
+
+    public void setPostDialDigits(String postDialDigits) {
+        mPostDialDigits = postDialDigits;
     }
 
     public String getPostDialDigits() {
@@ -1706,6 +1724,14 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
         mIntentExtras = extras;
     }
 
+    public Intent getOriginalCallIntent() {
+        return mOriginalCallIntent;
+    }
+
+    public void setOriginalCallIntent(Intent intent) {
+        mOriginalCallIntent = intent;
+    }
+
     /**
      * @return the uri of the contact associated with this call.
      */
@@ -1757,6 +1783,14 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
         } else {
             Log.addEvent(this, LogUtils.Events.SPLIT_FROM_CONFERENCE);
             mConnectionService.splitFromConference(this);
+        }
+    }
+
+    void addParticipantWithConference(String recipients) {
+        if (mConnectionService == null) {
+            Log.w(this, "conference requested on a call without a connection service.");
+        } else {
+            mConnectionService.addParticipantWithConference(this, recipients);
         }
     }
 
@@ -1848,6 +1882,23 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
         }
     }
 
+    /**
+     * Sets this {@link Call} to has the specified {@code parentCall}.  Also sets the parent to
+     * have this call as a child.
+     * @param parentCall
+     */
+    void setParentAndChildCall(Call parentCall) {
+        setParentCall(parentCall);
+        setChildOf(parentCall);
+    }
+
+    /**
+     * Unlike {@link #setParentAndChildCall(Call)}, only sets the parent call but does NOT set
+     * the child.
+     * TODO: This is only required when adding existing connections as a workaround so that we
+     * can avoid sending the "onParentChanged" callback until later.
+     * @param parentCall The new parent call.
+     */
     void setParentCall(Call parentCall) {
         if (parentCall == this) {
             Log.e(this, new Exception(), "setting the parent to self");
@@ -1857,20 +1908,35 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
             // nothing to do
             return;
         }
-        Preconditions.checkState(parentCall == null || mParentCall == null);
-
-        Call oldParent = mParentCall;
         if (mParentCall != null) {
             mParentCall.removeChildCall(this);
         }
         mParentCall = parentCall;
-        if (mParentCall != null) {
-            mParentCall.addChildCall(this);
+    }
+
+    /**
+     * To be called after {@link #setParentCall(Call)} to complete setting the parent by adding
+     * this call as a child of another call.
+     * <p>
+     * Note: The fact that the {@link Listener#onParentChanged(Call)} callback is called here seems
+     * counter-intuitive; it is done here so that when this method is called from
+     * {@link CallsManager#createCallForExistingConnection(String, ParcelableConnection)} we can
+     * delay informing InCallServices of the change in parent relationship until AFTER the call has
+     * been added to Telecom.
+     * @param parentCall The new parent for this call.
+     */
+    void setChildOf(Call parentCall) {
+        if (parentCall == null) {
+            return;
         }
 
-        Log.addEvent(this, LogUtils.Events.SET_PARENT, mParentCall);
-        for (Listener l : mListeners) {
-            l.onParentChanged(this);
+        if (!parentCall.getChildCalls().contains(this)) {
+            parentCall.addChildCall(this);
+
+            Log.addEvent(this, LogUtils.Events.SET_PARENT, parentCall);
+            for (Listener l : mListeners) {
+                l.onParentChanged(this);
+            }
         }
     }
 
@@ -1989,7 +2055,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable {
      * that the insurance policy lives in the framework side of things.
      */
     private void fixParentAfterDisconnect() {
-        setParentCall(null);
+        setParentAndChildCall(null);
     }
 
     /**

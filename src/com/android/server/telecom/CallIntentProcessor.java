@@ -1,5 +1,6 @@
 package com.android.server.telecom;
 
+import com.android.internal.telephony.TelephonyProperties;
 import com.android.server.telecom.components.ErrorDialogActivity;
 
 import android.content.Context;
@@ -9,7 +10,6 @@ import android.os.Bundle;
 import android.os.Trace;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.telecom.Connection;
 import android.telecom.DefaultDialerManager;
 import android.telecom.Log;
 import android.telecom.PhoneAccount;
@@ -20,6 +20,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.widget.Toast;
 
+import org.codeaurora.ims.QtiCallConstants;
 /**
  * Single point of entry for all outgoing and incoming calls.
  * {@link com.android.server.telecom.components.UserCallIntentProcessor} serves as a trampoline that
@@ -101,8 +102,11 @@ public class CallIntentProcessor {
         Uri handle = intent.getData();
         String scheme = handle.getScheme();
         String uriString = handle.getSchemeSpecificPart();
+        boolean isSkipSchemaParsing = intent.getBooleanExtra(
+                TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
+        Log.d(CallIntentProcessor.class, "isSkipSchemaParsing = " + isSkipSchemaParsing);
 
-        if (!PhoneAccount.SCHEME_VOICEMAIL.equals(scheme)) {
+        if (!PhoneAccount.SCHEME_VOICEMAIL.equals(scheme) && !isSkipSchemaParsing) {
             handle = Uri.fromParts(PhoneNumberUtils.isUriNumber(uriString) ?
                     PhoneAccount.SCHEME_SIP : PhoneAccount.SCHEME_TEL, uriString, null);
         }
@@ -117,6 +121,23 @@ public class CallIntentProcessor {
         if (clientExtras == null) {
             clientExtras = new Bundle();
         }
+        if (isSkipSchemaParsing) {
+            clientExtras.putBoolean(TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING,
+                    isSkipSchemaParsing);
+            handle = Uri.fromParts(PhoneAccount.SCHEME_TEL, handle.toString(), null);
+        }
+        boolean isConferenceUri = intent.getBooleanExtra(
+                TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+        Log.d(CallIntentProcessor.class, "isConferenceUri = "+isConferenceUri);
+        if (isConferenceUri) {
+            clientExtras.putBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, isConferenceUri);
+        }
+        boolean isAddParticipant = intent.getBooleanExtra(
+                TelephonyProperties.ADD_PARTICIPANT_KEY, false);
+        Log.d(CallIntentProcessor.class, "isAddparticipant = "+isAddParticipant);
+        if (isAddParticipant) {
+            clientExtras.putBoolean(TelephonyProperties.ADD_PARTICIPANT_KEY, isAddParticipant);
+        }
 
         // Ensure call subject is passed on to the connection service.
         if (intent.hasExtra(TelecomManager.EXTRA_CALL_SUBJECT)) {
@@ -124,11 +145,19 @@ public class CallIntentProcessor {
             clientExtras.putString(TelecomManager.EXTRA_CALL_SUBJECT, callsubject);
         }
 
+        final int callDomain = intent.getIntExtra(
+                QtiCallConstants.EXTRA_CALL_DOMAIN, QtiCallConstants.DOMAIN_AUTOMATIC);
+        Log.d(CallIntentProcessor.class, "callDomain = " + callDomain);
+        clientExtras.putInt(QtiCallConstants.EXTRA_CALL_DOMAIN, callDomain);
+
         final int videoState = intent.getIntExtra( TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE,
                 VideoProfile.STATE_AUDIO_ONLY);
         clientExtras.putInt(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE, videoState);
 
-        final boolean isPrivilegedDialer = intent.getBooleanExtra(KEY_IS_PRIVILEGED_DIALER, false);
+        Log.d(CallIntentProcessor.class, " processOutgoingCallIntent handle = " + handle
+                + ", scheme = " + scheme + ", uriString = " + uriString
+                + ", isSkipSchemaParsing = " + isSkipSchemaParsing
+                + ", isAddParticipant = " + isAddParticipant);
 
         boolean fixedInitiatingUser = fixInitiatingUserIfNecessary(context, intent);
         // Show the toast to warn user that it is a personal call though initiated in work profile.
@@ -140,24 +169,31 @@ public class CallIntentProcessor {
 
         // Send to CallsManager to ensure the InCallUI gets kicked off before the broadcast returns
         Call call = callsManager
-                .startOutgoingCall(handle, phoneAccountHandle, clientExtras, initiatingUser);
+                .startOutgoingCall(handle, phoneAccountHandle, clientExtras, initiatingUser,
+                        intent);
 
         if (call != null) {
-            // Asynchronous calls should not usually be made inside a BroadcastReceiver because once
-            // onReceive is complete, the BroadcastReceiver's process runs the risk of getting
-            // killed if memory is scarce. However, this is OK here because the entire Telecom
-            // process will be running throughout the duration of the phone call and should never
-            // be killed.
-            NewOutgoingCallIntentBroadcaster broadcaster = new NewOutgoingCallIntentBroadcaster(
-                    context, callsManager, call, intent, callsManager.getPhoneNumberUtilsAdapter(),
-                    isPrivilegedDialer);
-            final int result = broadcaster.processIntent();
-            final boolean success = result == DisconnectCause.NOT_DISCONNECTED;
+            sendNewOutgoingCallIntent(context, call, callsManager, intent);
+        }
+    }
 
-            if (!success && call != null) {
-                callsManager.clearPendingMOEmergencyCall();
-                disconnectCallAndShowErrorDialog(context, call, result);
-            }
+    static void sendNewOutgoingCallIntent(Context context, Call call, CallsManager callsManager,
+            Intent intent) {
+        // Asynchronous calls should not usually be made inside a BroadcastReceiver because once
+        // onReceive is complete, the BroadcastReceiver's process runs the risk of getting
+        // killed if memory is scarce. However, this is OK here because the entire Telecom
+        // process will be running throughout the duration of the phone call and should never
+        // be killed.
+        final boolean isPrivilegedDialer = intent.getBooleanExtra(KEY_IS_PRIVILEGED_DIALER, false);
+
+        NewOutgoingCallIntentBroadcaster broadcaster = new NewOutgoingCallIntentBroadcaster(
+                context, callsManager, call, intent, callsManager.getPhoneNumberUtilsAdapter(),
+                isPrivilegedDialer);
+        final int result = broadcaster.processIntent();
+        final boolean success = result == DisconnectCause.NOT_DISCONNECTED;
+
+        if (!success && call != null) {
+            disconnectCallAndShowErrorDialog(context, call, result);
         }
     }
 
