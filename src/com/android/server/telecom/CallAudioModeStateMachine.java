@@ -150,7 +150,7 @@ public class CallAudioModeStateMachine extends StateMachine {
     private class UnfocusedState extends BaseState {
         @Override
         public void enter() {
-            if (mIsInitialized) {
+            if (mIsInitialized && !mCallAudioManager.isIntermediateConfURICallDisconnected()) {
                 Log.i(LOG_TAG, "Abandoning audio focus: now UNFOCUSED");
                 mAudioManager.abandonAudioFocusForCall();
                 mAudioManager.setMode(AudioManager.MODE_NORMAL);
@@ -382,7 +382,9 @@ public class CallAudioModeStateMachine extends StateMachine {
                     // Do nothing.
                     return HANDLED;
                 case NEW_ACTIVE_OR_DIALING_CALL:
-                    // Do nothing. Already active.
+                    if (!args.foregroundCallIsVoip) {
+                        transitionTo(mSimCallFocusState);
+                    }
                     return HANDLED;
                 case NEW_RINGING_CALL:
                     // Don't make a call ring over an active call, but do play a call waiting tone.
@@ -440,8 +442,13 @@ public class CallAudioModeStateMachine extends StateMachine {
                             ? mVoipCallFocusState : mSimCallFocusState);
                     return HANDLED;
                 case NEW_RINGING_CALL:
-                    // Apparently this is current behavior. Should this be the case?
-                    transitionTo(mRingingFocusState);
+                    if (args.hasHoldingCalls) {
+                        // Don't make a call ring over a held call, but do play
+                        // a call waiting tone.
+                        mCallAudioManager.startCallWaiting();
+                    } else {
+                        transitionTo(mRingingFocusState);
+                    }
                     return HANDLED;
                 case NEW_HOLDING_CALL:
                     // Do nothing.

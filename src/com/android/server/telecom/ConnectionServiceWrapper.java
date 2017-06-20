@@ -40,6 +40,7 @@ import android.telecom.PhoneAccountHandle;
 import android.telecom.StatusHints;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telecom.IConnectionService;
@@ -77,6 +78,15 @@ public class ConnectionServiceWrapper extends ServiceBinder {
                     logIncoming("handleCreateConnectionComplete %s", callId);
                     ConnectionServiceWrapper.this
                             .handleCreateConnectionComplete(callId, request, connection);
+
+                    if (mServiceInterface != null) {
+                        logOutgoing("createConnectionComplete %s", callId);
+                        try {
+                            mServiceInterface.createConnectionComplete(callId,
+                                    Log.getExternalSession());
+                        } catch (RemoteException e) {
+                        }
+                    }
                 }
             } finally {
                 Binder.restoreCallingIdentity(token);
@@ -320,10 +330,10 @@ public class ConnectionServiceWrapper extends ServiceBinder {
                     if (childCall != null) {
                         if (conferenceCallId == null) {
                             Log.d(this, "unsetting parent: %s", conferenceCallId);
-                            childCall.setParentCall(null);
+                            childCall.setParentAndChildCall(null);
                         } else {
                             Call conferenceCall = mCallIdMapper.getCall(conferenceCallId);
-                            childCall.setParentCall(conferenceCall);
+                            childCall.setParentAndChildCall(conferenceCall);
                         }
                     } else {
                         // Log.w(this, "setIsConferenced, unknown call id: %s", args.arg1);
@@ -436,7 +446,7 @@ public class ConnectionServiceWrapper extends ServiceBinder {
                         Call childCall = mCallIdMapper.getCall(connId);
                         Log.d(this, "found child: %s", connId);
                         if (childCall != null) {
-                            childCall.setParentCall(conferenceCall);
+                            childCall.setParentAndChildCall(conferenceCall);
                         }
                     }
                 }
@@ -764,6 +774,14 @@ public class ConnectionServiceWrapper extends ServiceBinder {
                     Bundle.setDefusable(extras, true);
                     Call call = mCallIdMapper.getCall(callId);
                     if (call != null) {
+                        if ((extras != null)
+                                    && extras.getParcelable(TelephonyManager.EMR_DIAL_ACCOUNT)
+                                    instanceof PhoneAccountHandle) {
+                            PhoneAccountHandle account = extras.
+                                    getParcelable(TelephonyManager.EMR_DIAL_ACCOUNT);
+                            Log.d(this, "setTargetPhoneAccount, account = " + account);
+                            call.setTargetPhoneAccount(account);
+                        }
                         call.onConnectionEvent(event, extras);
                     }
                 }
@@ -1213,6 +1231,17 @@ public class ConnectionServiceWrapper extends ServiceBinder {
                 mServiceInterface.splitFromConference(callId, Log.getExternalSession());
             } catch (RemoteException ignored) {
             }
+        }
+    }
+
+    void addParticipantWithConference(Call call, String recipients) {
+        final String callId = mCallIdMapper.getCallId(call);
+            if (isServiceValid("addParticipantWithConference")) {
+                try {
+                    logOutgoing("addParticipantWithConference %s, %s", recipients, callId);
+                    mServiceInterface.addParticipantWithConference(callId, recipients);
+                } catch (RemoteException ignored) {
+                }
         }
     }
 
