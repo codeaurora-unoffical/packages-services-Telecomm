@@ -2978,7 +2978,7 @@ public class CallsManager extends Call.ListenerBase
     */
     private void maybeShowErrorDialogOnDisconnect(Call call) {
         if (call.getState() == CallState.DISCONNECTED && (isPotentialMMICode(call.getHandle())
-                || isPotentialInCallMMICode(call.getHandle()))) {
+                || isPotentialInCallMMICode(call.getHandle())) && !mCalls.contains(call)) {
             DisconnectCause disconnectCause = call.getDisconnectCause();
             if (!TextUtils.isEmpty(disconnectCause.getDescription()) && (disconnectCause.getCode()
                     == DisconnectCause.ERROR)) {
@@ -3074,5 +3074,14 @@ public class CallsManager extends Call.ListenerBase
             mContext.sendBroadcastAsUser(directedIntent, UserHandle.ALL, null);
         }
         return ;
+    }
+
+    void resetCdmaConnectionTime(Call call) {
+        call.setConnectTimeMillis(System.currentTimeMillis());
+        if (mCalls.contains(call)) {
+            for (CallsManagerListener listener : mListeners) {
+                listener.onCallStateChanged(call, CallState.ACTIVE, CallState.ACTIVE);
+            }
+        }
     }
 }
