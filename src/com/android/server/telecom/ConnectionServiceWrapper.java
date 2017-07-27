@@ -135,6 +135,26 @@ public class ConnectionServiceWrapper extends ServiceBinder {
         }
 
         @Override
+        public void resetCdmaConnectionTime(String callId, Session.Info sessionInfo) {
+            Log.startSession(sessionInfo, "CSW.rCCT");
+            long token = Binder.clearCallingIdentity();
+            try {
+                synchronized (mLock) {
+                    logIncoming("resetCdmaConnectionTime %s", callId);
+                    Call call = mCallIdMapper.getCall(callId);
+                    if (call != null) {
+                        mCallsManager.resetCdmaConnectionTime(call);
+                    } else {
+                        // Log.w(this, "resetCdmaConnectionTime, unknown call id: %s", msg.obj);
+                    }
+                }
+            } finally {
+                Binder.restoreCallingIdentity(token);
+                Log.endSession();
+            }
+        }
+
+        @Override
         public void setVideoProvider(String callId, IVideoProvider videoProvider,
                 Session.Info sessionInfo) {
             Log.startSession(sessionInfo, "CSW.sVP");
@@ -935,6 +955,14 @@ public class ConnectionServiceWrapper extends ServiceBinder {
                   }
                   extras.putLong(android.telecom.Call.EXTRA_LAST_EMERGENCY_CALLBACK_TIME_MILLIS,
                       mCallsManager.getEmergencyCallHelper().getLastEmergencyCallTimeMillis());
+                }
+
+                // Call is incoming and added because we're handing over from another; tell CS
+                // that its expected to handover.
+                if (call.isIncoming() && call.getHandoverSourceCall() != null) {
+                    extras.putBoolean(TelecomManager.EXTRA_IS_HANDOVER, true);
+                    extras.putParcelable(TelecomManager.EXTRA_HANDOVER_FROM_PHONE_ACCOUNT,
+                            call.getHandoverSourceCall().getTargetPhoneAccount());
                 }
 
                 Log.addEvent(call, LogUtils.Events.START_CONNECTION,

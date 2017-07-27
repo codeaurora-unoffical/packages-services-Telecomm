@@ -220,18 +220,16 @@ public class CallAudioManager extends CallsManagerListenerBase {
         // sets the call to active. Only thing to handle for mode here is the audio speedup thing.
 
         if (call.can(android.telecom.Call.Details.CAPABILITY_SPEED_UP_MT_AUDIO)) {
-            if (mForegroundCall == call) {
-                Log.i(LOG_TAG, "Invoking the MT_AUDIO_SPEEDUP mechanism. Transitioning into " +
-                        "an active in-call audio state before connection service has " +
-                        "connected the call.");
-                if (mCallStateToCalls.get(call.getState()) != null) {
-                    mCallStateToCalls.get(call.getState()).remove(call);
-                }
-                mActiveDialingOrConnectingCalls.add(call);
-                mCallAudioModeStateMachine.sendMessageWithArgs(
-                        CallAudioModeStateMachine.MT_AUDIO_SPEEDUP_FOR_RINGING_CALL,
-                        makeArgsForModeStateMachine());
+            Log.i(LOG_TAG, "Invoking the MT_AUDIO_SPEEDUP mechanism. Transitioning into " +
+                    "an active in-call audio state before connection service has " +
+                    "connected the call.");
+            if (mCallStateToCalls.get(call.getState()) != null) {
+                mCallStateToCalls.get(call.getState()).remove(call);
             }
+            mActiveDialingOrConnectingCalls.add(call);
+            mCallAudioModeStateMachine.sendMessageWithArgs(
+                    CallAudioModeStateMachine.MT_AUDIO_SPEEDUP_FOR_RINGING_CALL,
+                    makeArgsForModeStateMachine());
         }
 
         // Turn off mute when a new incoming call is answered.
@@ -314,7 +312,10 @@ public class CallAudioManager extends CallsManagerListenerBase {
         } else {
             // The call joined a conference, so stop tracking it.
             if (mCallStateToCalls.get(call.getState()) != null) {
-                mCallStateToCalls.get(call.getState()).remove(call);
+                boolean isRemoveCallSuccess = mCallStateToCalls.get(call.getState()).remove(call);
+                if (!isRemoveCallSuccess) {
+                    mActiveDialingOrConnectingCalls.remove(call);
+                }
             }
 
             updateForegroundCall();
@@ -648,6 +649,13 @@ public class CallAudioManager extends CallsManagerListenerBase {
     }
 
     private void playToneForDisconnectedCall(Call call) {
+        // If this call is being disconnected as a result of being handed over to another call,
+        // we will not play a disconnect tone.
+        if (call.isHandoverInProgress()) {
+            Log.i(LOG_TAG, "Omitting tone because %s is being handed over.", call);
+            return;
+        }
+
         if (mForegroundCall != null && call != mForegroundCall && mCalls.size() > 1) {
             Log.v(LOG_TAG, "Omitting tone because we are not foreground" +
                     " and there is another call.");
