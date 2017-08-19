@@ -232,8 +232,10 @@ public class CallAudioManager extends CallsManagerListenerBase {
                     makeArgsForModeStateMachine());
         }
 
-        // Turn off mute when a new incoming call is answered.
-        mute(false /* shouldMute */);
+        // Turn off mute when a new incoming call is answered iff it's not a handover.
+        if (!call.isHandoverInProgress()) {
+            mute(false /* shouldMute */);
+        }
 
         maybeStopRingingAndCallWaitingForAnsweredOrRejectedCall(call);
     }
@@ -444,7 +446,9 @@ public class CallAudioManager extends CallsManagerListenerBase {
 
     @VisibleForTesting
     public void startCallWaiting() {
-        mRinger.startCallWaiting(mRingingCalls.iterator().next());
+        if (mRingingCalls.size() == 1) {
+            mRinger.startCallWaiting(mRingingCalls.iterator().next());
+        }
     }
 
     @VisibleForTesting
