@@ -1911,10 +1911,12 @@ public class CallsManager extends Call.ListenerBase
      */
     void handleConnectionServiceDeath(ConnectionServiceWrapper service) {
         if (service != null) {
+            Log.i(this, "handleConnectionServiceDeath: service %s died", service);
             for (Call call : mCalls) {
                 if (call.getConnectionService() == service) {
                     if (call.getState() != CallState.DISCONNECTED) {
-                        markCallAsDisconnected(call, new DisconnectCause(DisconnectCause.ERROR));
+                        markCallAsDisconnected(call, new DisconnectCause(DisconnectCause.ERROR,
+                                "CS_DEATH"));
                     }
                     markCallAsRemoved(call);
                 }
@@ -2386,6 +2388,12 @@ public class CallsManager extends Call.ListenerBase
         handoverTo.sendCallEvent(android.telecom.Call.EVENT_HANDOVER_COMPLETE, null);
         answerCall(handoverTo, handoverTo.getVideoState());
         call.markFinishedHandoverStateAndCleanup(HandoverState.HANDOVER_COMPLETE);
+
+        // If the call we handed over to is self-managed, we need to disconnect the calls for other
+        // ConnectionServices.
+        if (handoverTo.isSelfManaged()) {
+            disconnectOtherCalls(handoverTo.getTargetPhoneAccount());
+        }
     }
 
     private void rejectHandoverTo(Call handoverTo) {
@@ -2424,6 +2432,11 @@ public class CallsManager extends Call.ListenerBase
 
         // Disconnect the call we handed over from.
         disconnectCall(handoverFrom);
+        // If we handed over to a self-managed ConnectionService, we need to disconnect calls for
+        // other ConnectionServices.
+        if (handoverTo.isSelfManaged()) {
+            disconnectOtherCalls(handoverTo.getTargetPhoneAccount());
+        }
     }
 
     private void updateCanAddCall() {
