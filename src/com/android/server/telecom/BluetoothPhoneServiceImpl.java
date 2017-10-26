@@ -473,6 +473,7 @@ public class BluetoothPhoneServiceImpl {
                 @Override
                 public void onServiceConnected(int profile, BluetoothProfile proxy) {
                     synchronized (mLock) {
+                        Log.w(TAG, "onServiceConnected: setting mBluetoothHeadset");
                         setBluetoothHeadset(new BluetoothHeadsetProxy((BluetoothHeadset) proxy));
                     }
                 }
@@ -480,7 +481,12 @@ public class BluetoothPhoneServiceImpl {
                 @Override
                 public void onServiceDisconnected(int profile) {
                     synchronized (mLock) {
-                        mBluetoothHeadset = null;
+                        if (mBluetoothHeadset != null) {
+                            mBluetoothAdapter.closeProfileProxy(BluetoothProfile.HEADSET,
+                                                  (BluetoothProfile)(mBluetoothHeadset.getBluetoothHeadsetObj()));
+                            Log.w(TAG, "onServiceDisconnected: setting mBluetoothHeadet to null");
+                            mBluetoothHeadset = null;
+                        }
                     }
                 }
             };
@@ -498,9 +504,20 @@ public class BluetoothPhoneServiceImpl {
                 Log.d(TAG, "Bluetooth Adapter state: %d", state);
                 if (state == BluetoothAdapter.STATE_ON) {
                     try {
+                        Log.w(TAG, "Calling get Profile proxy");
+                        mBluetoothAdapter.getProfileProxy(context, mProfileListener,
+                                                 BluetoothProfile.HEADSET);
+                        Log.w(TAG, "Done Calling get Profile proxy");
                         mBinder.queryPhoneState();
                     } catch (RemoteException e) {
                         // Remote exception not expected
+                    }
+                } else if(state == BluetoothAdapter.STATE_OFF) {
+                    if (mBluetoothHeadset != null) {
+                        mBluetoothAdapter.closeProfileProxy(BluetoothProfile.HEADSET,
+                                             (BluetoothProfile)(mBluetoothHeadset.getBluetoothHeadsetObj()));
+                        Log.w(TAG, "setting mBluetoothHeadet to null");
+                        mBluetoothHeadset = null;
                     }
                 }
             }
@@ -551,7 +568,6 @@ public class BluetoothPhoneServiceImpl {
             Log.d(this, "BluetoothPhoneService shutting down, no BT Adapter found.");
             return;
         }
-        mBluetoothAdapter.getProfileProxy(context, mProfileListener, BluetoothProfile.HEADSET);
 
         IntentFilter intentFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         context.registerReceiver(mBluetoothAdapterReceiver, intentFilter);
