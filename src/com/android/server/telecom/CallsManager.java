@@ -87,6 +87,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.codeaurora.ims.QtiCallConstants;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
+
 /**
  * Singleton.
  *
@@ -522,16 +524,26 @@ public class CallsManager extends Call.ListenerBase
         }
     }
 
+   private  int getPhoneIdExtra(Call call) {
+     final Bundle extras = call.getExtras();
+     return ((extras == null) ? QtiCallConstants.INVALID_PHONE_ID :
+         extras.getInt(QtiImsExtUtils.QTI_IMS_PHONE_ID_EXTRA_KEY,
+         QtiCallConstants.INVALID_PHONE_ID));
+   }
+
     /**
      * Determines if the incoming video call is allowed or not
      *
      * @param Call The incoming call.
      * @return {@code false} if incoming video call is not allowed.
      */
-    private static boolean isIncomingVideoCallAllowed(Call call) {
+    private  boolean isIncomingVideoCallAllowed(Call call) {
         Bundle extras = call.getExtras();
-        if (extras == null || (!isIncomingVideoCall(call))) {
-            Log.w(TAG, "isIncomingVideoCallAllowed: null Extras or not an incoming video call " +
+        int phoneId = getPhoneIdExtra(call);
+
+        if (extras == null || (!isIncomingVideoCall(call)) ||
+                QtiImsExtUtils.allowVideoCallsInLowBattery(phoneId, mContext)) {
+            Log.w(TAG, "isIncomingVideoCallAllowed:  null Extras or not an incoming video call " +
                     "or allow video calls in low battery");
             return true;
         }
@@ -1748,6 +1760,13 @@ public class CallsManager extends Call.ListenerBase
       * speaker phone.
       */
     void setAudioRoute(int route) {
+        Call call = getDialingCall();
+        if (call != null && call.getStartWithSpeakerphoneOn()) {
+            /* There is a change in audio routing preferance for the call.
+            * So, honour the new audio routing preferance.
+            */
+            call.setStartWithSpeakerphoneOn(false);
+        }
         mCallAudioManager.setAudioRoute(route);
     }
 
