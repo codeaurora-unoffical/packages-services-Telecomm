@@ -1000,10 +1000,7 @@ public class CallsManager extends Call.ListenerBase
         if (isRttSettingOn() ||
                 extras.getBoolean(TelecomManager.EXTRA_START_CALL_WITH_RTT, false)) {
             Log.i(this, "Incoming call requesting RTT, rtt setting is %b", isRttSettingOn());
-            if (phoneAccount != null &&
-                    phoneAccount.hasCapabilities(PhoneAccount.CAPABILITY_RTT)) {
-                call.createRttStreams();
-            }
+            call.createRttStreams();
             // Even if the phone account doesn't support RTT yet, the connection manager might
             // change that. Set this to check it later.
             call.setRequestedToStartWithRtt();
@@ -1034,7 +1031,9 @@ public class CallsManager extends Call.ListenerBase
                 final String handleScheme = handle.getSchemeSpecificPart();
                 Call fromCall = mCalls.stream()
                         .filter((c) -> mPhoneNumberUtilsAdapter.isSamePhoneNumber(
-                                c.getHandle().getSchemeSpecificPart(), handleScheme))
+                                (c.getHandle() == null
+                                        ? null : c.getHandle().getSchemeSpecificPart()),
+                                handleScheme))
                         .findFirst()
                         .orElse(null);
                 if (fromCall != null) {
@@ -1490,6 +1489,8 @@ public class CallsManager extends Call.ListenerBase
                 com.android.internal.R.bool.config_requireCallCapableAccountForHandle);
         final boolean isOutgoingCallPermitted = isOutgoingCallPermitted(call,
                 call.getTargetPhoneAccount());
+        final String callHandleScheme =
+                call.getHandle() == null ? null : call.getHandle().getScheme();
         if (call.getTargetPhoneAccount() != null || call.isEmergencyCall()) {
             // If the account has been set, proceed to place the outgoing call.
             // Otherwise the connection will be initiated when the account is set by the user.
@@ -1509,7 +1510,7 @@ public class CallsManager extends Call.ListenerBase
                 }
             }
         } else if (mPhoneAccountRegistrar.getCallCapablePhoneAccounts(
-                requireCallCapableAccountByHandle ? call.getHandle().getScheme() : null, false,
+                requireCallCapableAccountByHandle ? callHandleScheme : null, false,
                 call.getInitiatingUser()).isEmpty()) {
             // If there are no call capable accounts, disconnect the call.
             markCallAsDisconnected(call, new DisconnectCause(DisconnectCause.CANCELED,
@@ -2969,13 +2970,13 @@ public class CallsManager extends Call.ListenerBase
                 return false;
             }
 
-            // Disconnected the live call if the outgoing call is an emergency call.
-            if (isEmergency && !canHold(liveCall)) {
+            // If we have the max number of held managed calls and we're placing an emergency call,
+            // we'll disconnect the ongoing call if it cannot be held.
+            if (hasMaximumManagedHoldingCalls(call) && isEmergency && !canHold(liveCall)) {
                 call.getAnalytics().setCallIsAdditional(true);
                 liveCall.getAnalytics().setCallIsInterrupted(true);
-                liveCall.disconnect("emergency, can't hold");
-                mDisconnectingCall = liveCall;
-                mPendingMOEmerCall = call;
+                liveCall.disconnect("disconnecting to make room for emergency call "
+                        + call.getId());
                 return true;
             }
 
@@ -3834,11 +3835,11 @@ public class CallsManager extends Call.ListenerBase
     }
 
     public void acceptHandover(Uri srcAddr, int videoState, PhoneAccountHandle destAcct) {
-
         final String handleScheme = srcAddr.getSchemeSpecificPart();
         Call fromCall = mCalls.stream()
                 .filter((c) -> mPhoneNumberUtilsAdapter.isSamePhoneNumber(
-                        c.getHandle().getSchemeSpecificPart(), handleScheme))
+                        (c.getHandle() == null ? null : c.getHandle().getSchemeSpecificPart()),
+                        handleScheme))
                 .findFirst()
                 .orElse(null);
 
