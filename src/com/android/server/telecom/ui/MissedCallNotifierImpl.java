@@ -112,7 +112,8 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements 
     };
 
     private static final String CALL_LOG_WHERE_CLAUSE = "(type=" + Calls.MISSED_TYPE +
-            " OR type=" + Calls.MISSED_IMS_TYPE + ")" +
+            " OR type=" + Calls.MISSED_IMS_TYPE +
+            " OR type=" + Calls.MISSED_WIFI_TYPE + ")" +
             " AND new=1" +
             " AND is_read=0";
 
@@ -181,9 +182,11 @@ public class MissedCallNotifierImpl extends CallsManagerListenerBase implements 
                 List<String> selectionArgs = new ArrayList<>();
                 where.append(Calls.NEW);
                 where.append(" = 1 AND ");
-                where.append(String.format("(%s = ? OR %s = ?)",Calls.TYPE, Calls.TYPE));
+                where.append(String.format("(%s = ? OR %s = ? OR %s = ?)",
+                        Calls.TYPE, Calls.TYPE, Calls.TYPE));
                 selectionArgs.add(Integer.toString(Calls.MISSED_TYPE));
                 selectionArgs.add(Integer.toString(Calls.MISSED_IMS_TYPE));
+                selectionArgs.add(Integer.toString(Calls.MISSED_WIFI_TYPE));
                 try {
                     Uri callsUri = ContentProvider
                             .maybeAddUserId(Calls.CONTENT_URI, userHandle.getIdentifier());

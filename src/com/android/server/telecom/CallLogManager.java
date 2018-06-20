@@ -493,20 +493,35 @@ public final class CallLogManager extends CallsManagerListenerBase {
     private int toPreciseLogType(Call call, int callLogType) {
         final boolean isHighDefAudioCall =
                (call != null) && call.hasProperty(Connection.PROPERTY_HIGH_DEF_AUDIO);
+        final boolean isWifiCall =
+               (call != null) && call.hasProperty(Connection.PROPERTY_WIFI);
         Log.d(TAG, "callProperties: " + call.getConnectionProperties()
-                + "isHighDefAudioCall: " + isHighDefAudioCall);
-        if(!isHighDefAudioCall) {
+                + "isHighDefAudioCall: " + isHighDefAudioCall
+                + "isWifiCall: " + isWifiCall);
+        if(!isHighDefAudioCall && !isWifiCall) {
             return callLogType;
         }
         switch (callLogType) {
             case Calls.INCOMING_TYPE :
-                callLogType = Calls.INCOMING_IMS_TYPE;
+                if(isWifiCall) {
+                    callLogType = Calls.INCOMING_WIFI_TYPE;
+                } else {
+                    callLogType = Calls.INCOMING_IMS_TYPE;
+                }
                 break;
             case Calls.OUTGOING_TYPE :
-                callLogType = Calls.OUTGOING_IMS_TYPE;
+                if(isWifiCall) {
+                    callLogType = Calls.OUTGOING_WIFI_TYPE;
+                } else {
+                    callLogType = Calls.OUTGOING_IMS_TYPE;
+                }
                 break;
             case Calls.MISSED_TYPE :
-                callLogType = Calls.MISSED_IMS_TYPE;
+                if(isWifiCall) {
+                    callLogType = Calls.MISSED_WIFI_TYPE;
+                } else {
+                    callLogType = Calls.MISSED_IMS_TYPE;
+                }
                 break;
             default:
                 //Normal cs call, no change
