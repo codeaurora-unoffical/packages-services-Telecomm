@@ -2688,7 +2688,24 @@ public class CallsManager extends Call.ListenerBase
                 incomingCall.getHandoverSourceCall() == null;
     }
 
+    /**
+      * Returns true if there is an Emergency Call in Call list.
+      */
+    private boolean IsEmergencyCallInProgress() {
+        for (Call call : mCalls) {
+            if (call.isEmergencyCall()) {
+                // We never support add call if one of the calls is an emergency call.
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean makeRoomForOutgoingCall(Call call, boolean isEmergency) {
+        if (isEmergency && IsEmergencyCallInProgress()) {
+            Log.i(this, "emergency call is progress so no room for new E Call");
+            return false;
+        }
         // Reject If there is any Incoming Call while initiating an
         // an Emergency Call.
         if (isEmergency && hasMaximumManagedRingingCalls(call)) {
