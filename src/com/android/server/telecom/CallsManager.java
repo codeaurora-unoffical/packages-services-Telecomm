@@ -152,7 +152,7 @@ public class CallsManager extends Call.ListenerBase
     private static final int HANDLER_WAIT_TIMEOUT = 10000;
     private static final int MAXIMUM_LIVE_CALLS = 1;
     private static final int MAXIMUM_HOLD_CALLS = 1;
-    private static final int MAXIMUM_RINGING_CALLS = 1;
+    private static final int MAXIMUM_RINGING_CALLS = 2;
     private static final int MAXIMUM_DIALING_CALLS = 1;
     private static final int MAXIMUM_OUTGOING_CALLS = 1;
     private static final int MAXIMUM_TOP_LEVEL_CALLS = 2;
