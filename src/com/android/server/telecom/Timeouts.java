@@ -58,6 +58,10 @@ public final class Timeouts {
         public long getCarrierCallRedirectionTimeoutMillis(ContentResolver cr) {
             return Timeouts.getCarrierCallRedirectionTimeoutMillis(cr);
         }
+
+        public long getPhoneAccountSuggestionServiceTimeout(ContentResolver cr) {
+            return Timeouts.getPhoneAccountSuggestionServiceTimeout(cr);
+        }
     }
 
     /** A prefix to use for all keys so to not clobber the global namespace. */
@@ -152,6 +156,14 @@ public final class Timeouts {
     }
 
     /**
+     * Returns the amount of time to wait for the phone account suggestion service to reply.
+     */
+    public static long getPhoneAccountSuggestionServiceTimeout(ContentResolver contentResolver) {
+        return get(contentResolver, "phone_account_suggestion_service_timeout",
+                5000L /* 5 seconds */);
+    }
+
+    /**
      * Returns the amount of time to wait for the call screening service to allow or disallow a
      * call.
      */
@@ -175,7 +187,7 @@ public final class Timeouts {
      */
     public static long getUserDefinedCallRedirectionTimeoutMillis(ContentResolver contentResolver) {
         return get(contentResolver, "user_defined_call_redirection_timeout",
-            3000L /* 3 seconds */);
+            5000L /* 5 seconds */);
     }
 
     /**
@@ -184,6 +196,6 @@ public final class Timeouts {
      * @param contentResolver The content resolved.
      */
     public static long getCarrierCallRedirectionTimeoutMillis(ContentResolver contentResolver) {
-        return get(contentResolver, "carrier_call_redirection_timeout", 3000L /* 3 seconds */);
+        return get(contentResolver, "carrier_call_redirection_timeout", 5000L /* 5 seconds */);
     }
 }

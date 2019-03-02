@@ -22,6 +22,8 @@ import static android.Manifest.permission.MODIFY_PHONE_STATE;
 import static android.Manifest.permission.READ_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 
+import android.annotation.MainThread;
+import android.annotation.WorkerThread;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.content.ComponentName;
@@ -49,6 +51,7 @@ import com.android.server.telecom.CallIntentProcessor;
 import com.android.server.telecom.CallState;
 import com.android.server.telecom.CallsManager;
 import com.android.server.telecom.DefaultDialerCache;
+import com.android.server.telecom.NuisanceCallReporter;
 import com.android.server.telecom.PhoneAccountRegistrar;
 import com.android.server.telecom.TelecomServiceImpl;
 import com.android.server.telecom.TelecomSystem;
@@ -164,6 +167,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
     private TelecomServiceImpl.SettingsSecureAdapter mSettingsSecureAdapter =
         spy(new SettingsSecureAdapterFake());
     @Mock private UserCallIntentProcessor mUserCallIntentProcessor;
+    @Mock private NuisanceCallReporter mNuisanceCallReporter;
 
     private final TelecomSystem.SyncRoot mLock = new TelecomSystem.SyncRoot() { };
 
@@ -206,6 +210,7 @@ public class TelecomServiceImplTest extends TelecomTestCase {
                 mDefaultDialerCache,
                 mSubscriptionManagerAdapter,
                 mSettingsSecureAdapter,
+                mNuisanceCallReporter,
                 mLock);
         mTSIBinder = telecomServiceImpl.getBinder();
         mComponentContextFixture.setTelecomManager(mTelecomManager);
@@ -271,7 +276,8 @@ public class TelecomServiceImplTest extends TelecomTestCase {
                 makeMultiUserPhoneAccount(TEL_PA_HANDLE_16).build());
 
         PhoneAccountHandle returnedHandle
-                = mTSIBinder.getUserSelectedOutgoingPhoneAccount();
+                = mTSIBinder.getUserSelectedOutgoingPhoneAccount(
+                        TEL_PA_HANDLE_16.getComponentName().getPackageName());
         assertEquals(TEL_PA_HANDLE_16, returnedHandle);
     }
 
@@ -760,80 +766,6 @@ public class TelecomServiceImplTest extends TelecomTestCase {
         String packageNameExtra = capturedIntent.getStringExtra(
                 TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME);
         assertEquals(packageName, packageNameExtra);
-    }
-
-    @SmallTest
-    @Test
-    public void testRequestChangeDefaultCallScreeningAppCallingPackageMatchComponentName()
-            throws Exception {
-        String callingPackage = "com.android.thirdparty";
-
-        doNothing().when(mContext).startActivity(any(Intent.class));
-
-        mTSIBinder.requestChangeDefaultCallScreeningApp(THIRD_PARTY_CALL_SCREENING,
-                callingPackage);
-
-        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(1)).startActivity(intentCaptor.capture());
-
-        Intent capturedIntent = intentCaptor.getValue();
-        String className = capturedIntent.getComponent().getClassName();
-        assertEquals(className,
-                "com.android.server.telecom.components.ChangeDefaultCallScreeningApp");
-
-        String packageNameExtra = capturedIntent.getStringExtra(
-                TelecomManager.EXTRA_DEFAULT_CALL_SCREENING_APP_COMPONENT_NAME);
-        assertEquals(packageNameExtra, THIRD_PARTY_CALL_SCREENING.flattenToString());
-    }
-
-    @SmallTest
-    @Test
-    public void testRequestChangeDefaultCallScreeningAppCallingPackageNoMatchComponentName()
-        throws Exception {
-        boolean exceptionThrown = false;
-        String callingPackage = "com.android.unknown";
-
-        try {
-            mTSIBinder
-                .requestChangeDefaultCallScreeningApp(THIRD_PARTY_CALL_SCREENING, callingPackage);
-        } catch (SecurityException e) {
-            exceptionThrown = true;
-        }
-
-        assertTrue(exceptionThrown);
-    }
-
-    @SmallTest
-    @Test
-    public void testIsDefaultCallScreeningApp() throws Exception {
-        doNothing().when(mAppOpsManager).checkPackage(anyInt(), anyString());
-        assertTrue(mTSIBinder.isDefaultCallScreeningApp(THIRD_PARTY_CALL_SCREENING));
-    }
-
-    @SmallTest
-    @Test
-    public void testIsDefaultCallScreeningAppFailure() throws Exception {
-        ComponentName unknownComponentName = new ComponentName("com.android.unknown",
-            "com.android.unknown.callscreeningserviceimpl");
-        assertFalse(mTSIBinder.isDefaultCallScreeningApp(unknownComponentName));
-    }
-
-    @SmallTest
-    @Test
-    public void testSetDefaultCallScreeningAppSpecifiedComponentNameNoExist() throws Exception {
-        boolean exceptionThrown = false;
-
-        when(mContext.getPackageManager()
-            .getApplicationInfo(THIRD_PARTY_CALL_SCREENING.getPackageName(), 0))
-            .thenThrow(new IllegalArgumentException());
-
-        try {
-            mTSIBinder.setDefaultCallScreeningApp(THIRD_PARTY_CALL_SCREENING);
-        } catch (IllegalArgumentException e) {
-            exceptionThrown = true;
-        }
-
-        assertTrue(exceptionThrown);
     }
 
     @SmallTest

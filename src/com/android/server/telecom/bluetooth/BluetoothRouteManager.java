@@ -75,6 +75,12 @@ public class BluetoothRouteManager extends StateMachine {
         void onBluetoothActiveDeviceGone();
         void onBluetoothAudioConnected();
         void onBluetoothAudioDisconnected();
+        /**
+         * This gets called when we get an unexpected state change from Bluetooth. Their stack does
+         * weird things sometimes, so this is really a signal for the listener to refresh their
+         * internal state and make sure it matches up with what the BT stack is doing.
+         */
+        void onUnexpectedBluetoothStateChange();
     }
 
     /**
@@ -186,6 +192,7 @@ public class BluetoothRouteManager extends StateMachine {
                     case BT_AUDIO_LOST:
                         Log.i(LOG_TAG, "Received HFP off for device %s while HFP off.",
                                 (String) args.arg2);
+                        mListener.onUnexpectedBluetoothStateChange();
                         break;
                     case GET_CURRENT_STATE:
                         BlockingQueue<IState> sink = (BlockingQueue<IState>) args.arg3;
@@ -294,13 +301,14 @@ public class BluetoothRouteManager extends StateMachine {
                         }
                         break;
                     case BT_AUDIO_LOST:
-                        if (Objects.equals(mDeviceAddress, address)) {
+                        if (Objects.equals(mDeviceAddress, address) || address == null) {
                             Log.i(LOG_TAG, "Connection with device %s failed.",
                                     mDeviceAddress);
                             transitionToActualState();
                         } else {
                             Log.w(LOG_TAG, "Got HFP lost message for device %s while" +
                                     " connecting to %s.", address, mDeviceAddress);
+                            mListener.onUnexpectedBluetoothStateChange();
                         }
                         break;
                     case GET_CURRENT_STATE:
@@ -404,12 +412,13 @@ public class BluetoothRouteManager extends StateMachine {
                         }
                         break;
                     case BT_AUDIO_LOST:
-                        if (Objects.equals(mDeviceAddress, address)) {
+                        if (Objects.equals(mDeviceAddress, address) || address == null) {
                             Log.i(LOG_TAG, "HFP connection with device %s lost.", mDeviceAddress);
                             transitionToActualState();
                         } else {
                             Log.w(LOG_TAG, "Got HFP lost message for device %s while" +
                                     " connected to %s.", address, mDeviceAddress);
+                            mListener.onUnexpectedBluetoothStateChange();
                         }
                         break;
                     case GET_CURRENT_STATE:

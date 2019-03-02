@@ -46,13 +46,13 @@
     <string name="no_vm_number" msgid="4164780423805688336">"व्हॉइसमेल नंबर गहाळ"</string>
     <string name="no_vm_number_msg" msgid="1300729501030053828">"सिम कार्डवर कोणताही व्हॉइसमेल नंबर स्टोअर केला नाही."</string>
     <string name="add_vm_number_str" msgid="4676479471644687453">"नंबर जोडा"</string>
-    <string name="change_default_dialer_dialog_title" msgid="9101655962941740507">"<xliff:g id="NEW_APP">%s</xliff:g> ला तुमचा डीफॉल्ट अॅप बनवायचा?"</string>
+    <string name="change_default_dialer_dialog_title" msgid="9101655962941740507">"<xliff:g id="NEW_APP">%s</xliff:g> ला तुमचा डीफॉल्ट अ‍ॅप बनवायचा?"</string>
     <string name="change_default_dialer_dialog_affirmative" msgid="8606546663509166276">"डीफॉल्ट म्हणून सेट करा"</string>
     <string name="change_default_dialer_dialog_negative" msgid="9078144617060173845">"रद्द करा"</string>
-    <string name="change_default_dialer_warning_message" msgid="1417671460801684999">"<xliff:g id="NEW_APP">%s</xliff:g> कॉल करण्यात आणि त्याचे सर्व पैलू नियंत्रित करण्‍यात सक्षम असेल. ज्या अॅप्सवर तुमचा विश्वास आहे फक्त त्यांंनाच तुमचा डीफॉल्ट फोन अॅप म्हणून सेट करावे."</string>
-    <string name="change_default_call_screening_dialog_title" msgid="8714534302859934164">"<xliff:g id="NEW_APP">%s</xliff:g> ला तुमचे डीफॉल्ट कॉल स्क्रीनिंग अॅप बनवा?"</string>
+    <string name="change_default_dialer_warning_message" msgid="1417671460801684999">"<xliff:g id="NEW_APP">%s</xliff:g> कॉल करण्यात आणि त्याचे सर्व पैलू नियंत्रित करण्‍यात सक्षम असेल. ज्या अ‍ॅप्सवर तुमचा विश्वास आहे फक्त त्यांंनाच तुमचा डीफॉल्ट फोन अ‍ॅप म्हणून सेट करावे."</string>
+    <string name="change_default_call_screening_dialog_title" msgid="8714534302859934164">"<xliff:g id="NEW_APP">%s</xliff:g> ला तुमचे डीफॉल्ट कॉल स्क्रीनिंग अ‍ॅप बनवा?"</string>
     <string name="change_default_call_screening_warning_message_for_disable_old_app" msgid="5128397581530600941">"<xliff:g id="OLD_APP">%s</xliff:g> यापुढे स्क्रीन कॉल करता येणार नाहीत"</string>
-    <string name="change_default_call_screening_warning_message" msgid="3881131132588596837">"<xliff:g id="NEW_APP">%s</xliff:g> तुमच्या संपर्कांमध्ये नसलेल्या कॉल करणार्‍याविषयी माहिती पाहू शकेल आणि हे कॉल ब्लॉक करू शकेल. फक्त तुमचा विश्वास असलेल्या अॅप्स डीफॉल्ट कॉल स्क्रीनिंग अॅप म्हणून सेट केले जाणे आवश्यक आहे."</string>
+    <string name="change_default_call_screening_warning_message" msgid="3881131132588596837">"<xliff:g id="NEW_APP">%s</xliff:g> तुमच्या संपर्कांमध्ये नसलेल्या कॉल करणार्‍याविषयी माहिती पाहू शकेल आणि हे कॉल ब्लॉक करू शकेल. फक्त तुमचा विश्वास असलेल्या अ‍ॅप्स डीफॉल्ट कॉल स्क्रीनिंग अ‍ॅप म्हणून सेट केले जाणे आवश्यक आहे."</string>
     <string name="change_default_call_screening_dialog_affirmative" msgid="5503888845998386856">"डीफॉल्ट सेट करा"</string>
     <string name="change_default_call_screening_dialog_negative" msgid="3420459312464019224">"रद्द करा"</string>
     <string name="blocked_numbers" msgid="2751843139572970579">"ब्लॉक केलेले नंबर"</string>
@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"उत्तर देण्यामुळे तुमचा सुरु असलेला व्हिडिओ कॉल समाप्त होईल"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"उत्तर द्या"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"नकार द्या"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"आपल्या <xliff:g id="OTHER_CALL">%1$s</xliff:g> कॉलमुळे कॉल केला जाऊ शकत नाही."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"आपल्या <xliff:g id="OTHER_CALL">%1$s</xliff:g> कॉलमुळे कॉल केला जाऊ शकत नाही."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"दुसर्‍या अॅपमधील कॉलमुळे कॉल केला जाऊ शकत नाही."</string>
@@ -90,6 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"सुटलेले कॉल"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"कॉल ब्‍लॉक करणे"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"हा कॉल केल्याने तुमचा <xliff:g id="OTHER_APP">%1$s</xliff:g> कॉल समाप्त होईल."</string>
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"वेगळा नंबर किंवा खाते वापरून कॉल करण्याची <xliff:g id="OTHER_APP">%1$s</xliff:g> ला अनुमती द्या."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"<xliff:g id="OTHER_APP">%1$s</xliff:g> द्वारे कॉल केला जाऊ शकत नाही. वेगळे कॉल रीडिरेक्टिंग अ‍ॅप वापरण्याचा किंवा मदतीसाठी डेव्हलपरशी संपर्क साधण्याचा प्रयत्न करा."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"कॉल ब्‍लॉक करणे"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"संपर्कांमध्‍ये क्रमांक नाहीत"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"तुमच्‍या संपर्कांच्‍या सूचीमध्‍ये नसलेले क्रमांक ब्‍लॉक करा"</string>

@@ -27,7 +27,7 @@
     <string name="notification_missedCall_call_back" msgid="2684890353590890187">"Terugbellen"</string>
     <string name="notification_missedCall_message" msgid="3049928912736917988">"Bericht"</string>
     <string name="accessibility_call_muted" msgid="2776111226185342220">"Gesprek gedempt."</string>
-    <string name="accessibility_speakerphone_enabled" msgid="1988512040421036359">"Telefoonluidspreker is ingeschakeld."</string>
+    <string name="accessibility_speakerphone_enabled" msgid="1988512040421036359">"Luidspreker is aan."</string>
     <string name="respond_via_sms_canned_response_1" msgid="2461606462788380215">"Kan nu niet opnemen. Alles goed?"</string>
     <string name="respond_via_sms_canned_response_2" msgid="4074450431532859214">"Ik bel je zo terug."</string>
     <string name="respond_via_sms_canned_response_3" msgid="3496079065723960450">"Ik bel je later."</string>
@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"Als je opneemt, wordt je actieve videogesprek beëindigd"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"Beantwoorden"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"Weigeren"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"Gesprek kan niet worden gestart vanwege je <xliff:g id="OTHER_CALL">%1$s</xliff:g>-gesprek."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"Gesprek kan niet worden gestart vanwege je <xliff:g id="OTHER_CALL">%1$s</xliff:g>-gesprekken."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"Gesprek kan niet worden gestart vanwege een gesprek in een andere app."</string>
@@ -90,6 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"Gemiste gesprekken"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"Gesprekken blokkeren"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"Als je dit gesprek start, wordt je <xliff:g id="OTHER_APP">%1$s</xliff:g>-gesprek beëindigd."</string>
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"Sta <xliff:g id="OTHER_APP">%1$s</xliff:g> toe om een gesprek te plaatsen via een ander nummer of account."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"<xliff:g id="OTHER_APP">%1$s</xliff:g> kan geen gesprek plaatsen. Probeer een andere app om gesprekken om te leiden of neem voor hulp contact op met de ontwikkelaar."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"Gesprekken blokkeren"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"Nummers die niet op je contactenlijst staan"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"Blokkeer nummers die niet op je contactenlijst staan"</string>

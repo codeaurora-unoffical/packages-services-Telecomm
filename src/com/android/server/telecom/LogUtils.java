@@ -95,6 +95,7 @@ public class LogUtils {
         public static final String ADD_CHILD = "ADD_CHILD";
         public static final String REMOVE_CHILD = "REMOVE_CHILD";
         public static final String SET_PARENT = "SET_PARENT";
+        public static final String CONF_STATE_CHANGED = "CONF_STATE_CHANGED";
         public static final String MUTE = "MUTE";
         public static final String UNMUTE = "UNMUTE";
         public static final String AUDIO_ROUTE = "AUDIO_ROUTE";
@@ -108,7 +109,10 @@ public class LogUtils {
         public static final String BIND_SCREENING = "BIND_SCREENING";
         public static final String SCREENING_BOUND = "SCREENING_BOUND";
         public static final String SCREENING_SENT = "SCREENING_SENT";
+        public static final String CONTROLLER_SCREENING_COMPLETED =
+                "CONTROLLER_SCREENING_COMPLETED";
         public static final String SCREENING_COMPLETED = "SCREENING_COMPLETED";
+        public static final String CALL_IDENTIFICATION_SET = "CALL_IDENTIFICATION_SET";
         public static final String BLOCK_CHECK_INITIATED = "BLOCK_CHECK_INITIATED";
         public static final String BLOCK_CHECK_FINISHED = "BLOCK_CHECK_FINISHED";
         public static final String DIRECT_TO_VM_INITIATED = "DIRECT_TO_VM_INITIATED";
@@ -145,6 +149,9 @@ public class LogUtils {
         public static final String REDIRECTION_COMPLETED_CARRIER = "REDIRECTION_COMPLETED_CARRIER";
         public static final String REDIRECTION_TIMED_OUT_USER = "REDIRECTION_TIMED_OUT_USER";
         public static final String REDIRECTION_TIMED_OUT_CARRIER = "REDIRECTION_TIMED_OUT_CARRIER";
+        public static final String REDIRECTION_USER_CONFIRMATION = "REDIRECTION_USER_CONFIRMATION";
+        public static final String REDIRECTION_USER_CONFIRMED = "REDIRECTION_USER_CONFIRMED";
+        public static final String REDIRECTION_USER_CANCELLED = "REDIRECTION_USER_CANCELLED";
 
         public static class Timings {
             public static final String ACCEPT_TIMING = "accept";

@@ -39,6 +39,7 @@ import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Process;
 import android.os.UserHandle;
@@ -57,7 +58,6 @@ import android.util.EventLog;
 
 import com.android.internal.telecom.ITelecomService;
 import com.android.internal.util.IndentingPrintWriter;
-import com.android.server.telecom.components.ChangeDefaultCallScreeningApp;
 import com.android.server.telecom.components.UserCallIntentProcessorFactory;
 import com.android.server.telecom.settings.BlockedNumbersActivity;
 
@@ -137,10 +137,14 @@ public class TelecomServiceImpl {
         }
 
         @Override
-        public PhoneAccountHandle getUserSelectedOutgoingPhoneAccount() {
+        public PhoneAccountHandle getUserSelectedOutgoingPhoneAccount(String callingPackage) {
             synchronized (mLock) {
                 try {
                     Log.startSession("TSI.gUSOPA");
+                    if (!isDialerOrPrivileged(callingPackage, "getDefaultOutgoingPhoneAccount")) {
+                        throw new SecurityException("Only the default dialer, or caller with "
+                                + "READ_PRIVILEGED_PHONE_STATE can call this method.");
+                    }
                     final UserHandle callingUserHandle = Binder.getCallingUserHandle();
                     return mPhoneAccountRegistrar.getUserSelectedOutgoingPhoneAccount(
                             callingUserHandle);
@@ -472,7 +476,10 @@ public class TelecomServiceImpl {
                                 && extras.getBoolean(PhoneAccount.EXTRA_SKIP_CALL_FILTERING)) {
                             enforceRegisterSkipCallFiltering();
                         }
-                        enforceUserHandleMatchesCaller(account.getAccountHandle());
+                        final int callingUid = Binder.getCallingUid();
+                        if (callingUid != Process.SHELL_UID) {
+                            enforceUserHandleMatchesCaller(account.getAccountHandle());
+                        }
                         final long token = Binder.clearCallingIdentity();
                         try {
                             mPhoneAccountRegistrar.registerPhoneAccount(account);
@@ -1345,147 +1352,6 @@ public class TelecomServiceImpl {
             }
         }
 
-        /**
-         * @see android.telecom.TelecomManager#requestChangeDefaultCallScreeningApp
-         */
-        @Override
-        public void requestChangeDefaultCallScreeningApp(ComponentName componentName, String
-            callingPackage) {
-            try {
-                Log.startSession("TSI.rCDCSA");
-                synchronized (mLock) {
-                    long token = Binder.clearCallingIdentity();
-                    try {
-                        if (callingPackage.equals(componentName.getPackageName())) {
-                            final Intent intent = new Intent(mContext,
-                                ChangeDefaultCallScreeningApp.class);
-                            intent.putExtra(
-                                TelecomManager.EXTRA_DEFAULT_CALL_SCREENING_APP_COMPONENT_NAME,
-                                componentName.flattenToString());
-                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            mContext.startActivity(intent);
-                        } else {
-                            throw new SecurityException(
-                                "calling package name does't match the package of the passed "
-                                    + "component name.");
-                        }
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            } finally {
-                Log.endSession();
-            }
-        }
-
-        /**
-         * @see android.telecom.TelecomManager#isDefaultCallScreeningApp
-         */
-        @Override
-        public boolean isDefaultCallScreeningApp(ComponentName componentName) {
-            try {
-                Log.startSession("TSI.iDCSA");
-                synchronized (mLock) {
-                    if (componentName == null) {
-                        return false;
-                    }
-                    mAppOpsManager
-                        .checkPackage(Binder.getCallingUid(), componentName.getPackageName());
-
-                    long token = Binder.clearCallingIdentity();
-                    try {
-                        final String defaultPackage = mSettingsSecureAdapter
-                            .getStringForUser(mContext.getContentResolver(),
-                                Settings.Secure.CALL_SCREENING_DEFAULT_COMPONENT,
-                                UserHandle.USER_CURRENT);
-
-                        if (!TextUtils.isEmpty(defaultPackage) && !TextUtils
-                            .isEmpty(componentName.flattenToString()) && TextUtils
-                            .equals(defaultPackage, componentName.flattenToString())) {
-                            return true;
-                        } else {
-                            Log.d(this,
-                                "Provided package name is not the current default Call Screening application.");
-                            return false;
-                        }
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            } finally {
-                Log.endSession();
-            }
-        }
-
-        /**
-         * @see android.telecom.TelecomManager#setDefaultCallScreeningApp
-         */
-        @Override
-        public void setDefaultCallScreeningApp(ComponentName componentName) {
-            try {
-                Log.startSession("TSI.sDCSA");
-                enforcePermission(MODIFY_PHONE_STATE);
-                enforcePermission(WRITE_SECURE_SETTINGS);
-                synchronized (mLock) {
-                    long token = Binder.clearCallingIdentity();
-                    try {
-                        try {
-                            mContext.getPackageManager().getApplicationInfo(
-                                componentName.getPackageName(), 0);
-                        } catch (PackageManager.NameNotFoundException e) {
-                            throw new IllegalArgumentException(
-                                "the specified package name does't exist componentName = " +
-                                    componentName);
-                        }
-
-                        Intent intent = new Intent(CallScreeningService.SERVICE_INTERFACE)
-                            .setPackage(componentName.getPackageName());
-                        List<ResolveInfo> entries = mContext.getPackageManager()
-                            .queryIntentServicesAsUser(intent, 0,
-                                mCallsManager.getCurrentUserHandle().getIdentifier());
-                        if (entries.isEmpty()) {
-                            throw new IllegalArgumentException(
-                                "The specified package name doesn't have call screening services");
-                        }
-
-                        try {
-                            ServiceInfo serviceInfo = mContext.getPackageManager().getServiceInfo(
-                                componentName, 0);
-                            if (!Manifest.permission.BIND_SCREENING_SERVICE.equals(serviceInfo
-                                .permission)) {
-                                throw new IllegalArgumentException(
-                                    "The passed component doesn't require " +
-                                        "BIND_SCREENING_SERVICE permission");
-                            }
-
-                        } catch (PackageManager.NameNotFoundException e) {
-                            throw new IllegalArgumentException(
-                                "the specified component name does't exist componentName = "
-                                    + componentName);
-                        }
-
-                        final String oldComponentName = mSettingsSecureAdapter
-                            .getStringForUser(mContext.getContentResolver(),
-                                Settings.Secure.CALL_SCREENING_DEFAULT_COMPONENT,
-                                UserHandle.USER_CURRENT);
-
-                        broadcastCallScreeningAppChangedIntent(oldComponentName, false);
-
-                        mSettingsSecureAdapter.putStringForUser(mContext.getContentResolver(),
-                            Settings.Secure.CALL_SCREENING_DEFAULT_COMPONENT,
-                            componentName.flattenToString(), UserHandle.USER_CURRENT);
-
-                        broadcastCallScreeningAppChangedIntent(componentName.flattenToString(),
-                            true);
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            } finally {
-                Log.endSession();
-            }
-        }
-
         @Override
         public TelecomAnalytics dumpCallAnalytics() {
             try {
@@ -1643,6 +1509,36 @@ public class TelecomServiceImpl {
         }
 
         /**
+         * See {@link TelecomManager#reportNuisanceCallStatus(Uri, boolean)}
+         */
+        @Override
+        public void reportNuisanceCallStatus(Uri handle, boolean isNuisance,
+                String callingPackage) {
+            try {
+                Log.startSession("TSI.rNCS");
+                if (!isPrivilegedDialerCalling(callingPackage)) {
+                    throw new SecurityException(
+                            "Only the default dialer can report nuisance call status");
+                }
+
+                long token = Binder.clearCallingIdentity();
+                try {
+                    String callScreeningPackageName =
+                            mCallsManager.getRoleManagerAdapter().getDefaultCallScreeningApp();
+
+                    if (!TextUtils.isEmpty(callScreeningPackageName)) {
+                        mNuisanceCallReporter.reportNuisanceCallStatus(callScreeningPackageName,
+                                handle, isNuisance);
+                    }
+                } finally {
+                    Binder.restoreCallingIdentity(token);
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        /**
          * See {@link TelecomManager#handleCallIntent(Intent)} ()}
          */
         @Override
@@ -1661,6 +1557,110 @@ public class TelecomServiceImpl {
                     } finally {
                         Binder.restoreCallingIdentity(token);
                     }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
+        public void setTestDefaultCallRedirectionApp(String packageName) {
+            try {
+                Log.startSession("TSI.sTDCRA");
+                enforceModifyPermission();
+                if (!Build.IS_USERDEBUG) {
+                    throw new SecurityException("Test-only API.");
+                }
+                synchronized (mLock) {
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        mCallsManager.getRoleManagerAdapter().setTestDefaultCallRedirectionApp(
+                                packageName);
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
+        public void setTestDefaultCallScreeningApp(String packageName) {
+            try {
+                Log.startSession("TSI.sTDCSA");
+                enforceModifyPermission();
+                if (!Build.IS_USERDEBUG) {
+                    throw new SecurityException("Test-only API.");
+                }
+                synchronized (mLock) {
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        mCallsManager.getRoleManagerAdapter().setTestDefaultCallScreeningApp(
+                                packageName);
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
+        public void addOrRemoveTestCallCompanionApp(String packageName, boolean isAdded) {
+            try {
+                Log.startSession("TSI.aORTCCA");
+                enforceModifyPermission();
+                if (!Build.IS_USERDEBUG) {
+                    throw new SecurityException("Test-only API.");
+                }
+                synchronized (mLock) {
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        mCallsManager.getRoleManagerAdapter().addOrRemoveTestCallCompanionApp(
+                                packageName, isAdded);
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
+        public void setTestAutoModeApp(String packageName) {
+            try {
+                Log.startSession("TSI.sTAMA");
+                enforceModifyPermission();
+                if (!Build.IS_USERDEBUG) {
+                    throw new SecurityException("Test-only API.");
+                }
+                synchronized (mLock) {
+                    long token = Binder.clearCallingIdentity();
+                    try {
+                        mCallsManager.getRoleManagerAdapter().setTestAutoModeApp(packageName);
+                    } finally {
+                        Binder.restoreCallingIdentity(token);
+                    }
+                }
+            } finally {
+                Log.endSession();
+            }
+        }
+
+        @Override
+        public void setTestPhoneAcctSuggestionComponent(String flattenedComponentName) {
+            try {
+                Log.startSession("TSI.sPASA");
+                enforceModifyPermission();
+                if (Binder.getCallingUid() != Process.SHELL_UID
+                        && Binder.getCallingUid() != Process.ROOT_UID) {
+                    throw new SecurityException("Shell-only API.");
+                }
+                synchronized (mLock) {
+                    PhoneAccountSuggestionHelper.setOverrideServiceName(flattenedComponentName);
                 }
             } finally {
                 Log.endSession();
@@ -1711,6 +1711,7 @@ public class TelecomServiceImpl {
     private AppOpsManager mAppOpsManager;
     private PackageManager mPackageManager;
     private CallsManager mCallsManager;
+    private final NuisanceCallReporter mNuisanceCallReporter;
     private final PhoneAccountRegistrar mPhoneAccountRegistrar;
     private final CallIntentProcessor.Adapter mCallIntentProcessorAdapter;
     private final UserCallIntentProcessorFactory mUserCallIntentProcessorFactory;
@@ -1728,6 +1729,7 @@ public class TelecomServiceImpl {
             DefaultDialerCache defaultDialerCache,
             SubscriptionManagerAdapter subscriptionManagerAdapter,
             SettingsSecureAdapter settingsSecureAdapter,
+            NuisanceCallReporter nuisanceCallReporter,
             TelecomSystem.SyncRoot lock) {
         mContext = context;
         mAppOpsManager = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
@@ -1742,6 +1744,7 @@ public class TelecomServiceImpl {
         mCallIntentProcessorAdapter = callIntentProcessorAdapter;
         mSubscriptionManagerAdapter = subscriptionManagerAdapter;
         mSettingsSecureAdapter = settingsSecureAdapter;
+        mNuisanceCallReporter = nuisanceCallReporter;
     }
 
     public ITelecomService.Stub getBinder() {
@@ -1944,6 +1947,19 @@ public class TelecomServiceImpl {
             return mAppOpsManager.noteOp(AppOpsManager.OP_READ_PHONE_STATE,
                     Binder.getCallingUid(), callingPackage) == AppOpsManager.MODE_ALLOWED;
         }
+    }
+
+    private boolean isDialerOrPrivileged(String callingPackage, String message) {
+        // The system/default dialer can always read phone state - so that emergency calls will
+        // still work.
+        if (isPrivilegedDialerCalling(callingPackage)) {
+            return true;
+        }
+
+        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE, message);
+        // SKIP checking run-time OP_READ_PHONE_STATE since caller or self has PRIVILEGED
+        // permission
+        return true;
     }
 
     private boolean isSelfManagedConnectionService(PhoneAccountHandle phoneAccountHandle) {

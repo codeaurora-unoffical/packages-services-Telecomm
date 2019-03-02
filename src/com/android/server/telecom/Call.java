@@ -32,6 +32,7 @@ import android.os.SystemClock;
 import android.os.Trace;
 import android.provider.ContactsContract.Contacts;
 import android.telecom.CallAudioState;
+import android.telecom.CallIdentification;
 import android.telecom.Conference;
 import android.telecom.ConnectionService;
 import android.telecom.DisconnectCause;
@@ -131,6 +132,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         void onConnectionManagerPhoneAccountChanged(Call call);
         void onPhoneAccountChanged(Call call);
         void onConferenceableCallsChanged(Call call);
+        void onConferenceStateChanged(Call call, boolean isConference);
         boolean onCanceledViaNewOutgoingCallBroadcast(Call call, long disconnectionTimeout);
         void onHoldToneRequested(Call call);
         void onConnectionEvent(Call call, String event, Bundle extras);
@@ -141,6 +143,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                                  Bundle extras, boolean isLegacy);
         void onHandoverFailed(Call call, int error);
         void onHandoverComplete(Call call);
+        void onCallIdentificationChanged(Call call);
     }
 
     public abstract static class ListenerBase implements Listener {
@@ -199,6 +202,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         @Override
         public void onConferenceableCallsChanged(Call call) {}
         @Override
+        public void onConferenceStateChanged(Call call, boolean isConference) {}
+        @Override
         public boolean onCanceledViaNewOutgoingCallBroadcast(Call call, long disconnectionTimeout) {
             return false;
         }
@@ -219,6 +224,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
         public void onHandoverFailed(Call call, int error) {}
         @Override
         public void onHandoverComplete(Call call) {}
+        @Override
+        public void onCallIdentificationChanged(Call call) {}
     }
 
     private final CallerInfoLookupHelper.OnQueryCompleteListener mCallerInfoQueryListener =
@@ -530,8 +537,13 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     private boolean mIsUsingCallFiltering = false;
 
     /**
+     * {@link CallIdentification} provided by a {@link android.telecom.CallScreeningService}.
+     */
+    private CallIdentification mCallIdentification = null;
+
+    /**
      * Persists the specified parameters and initializes the new instance.
-     *  @param context The context.
+     * @param context The context.
      * @param repository The connection service repository.
      * @param handle The handle to dial.
      * @param gatewayInfo Gateway information to use for the call.
@@ -551,8 +563,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             CallsManager callsManager,
             TelecomSystem.SyncRoot lock,
             ConnectionServiceRepository repository,
-            ContactsAsyncHelper contactsAsyncHelper,
-            CallerInfoAsyncQueryFactory callerInfoAsyncQueryFactory,
             PhoneNumberUtilsAdapter phoneNumberUtilsAdapter,
             Uri handle,
             GatewayInfo gatewayInfo,
@@ -587,7 +597,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     /**
      * Persists the specified parameters and initializes the new instance.
-     *  @param context The context.
+     * @param context The context.
      * @param repository The connection service repository.
      * @param handle The handle to dial.
      * @param gatewayInfo Gateway information to use for the call.
@@ -609,8 +619,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             CallsManager callsManager,
             TelecomSystem.SyncRoot lock,
             ConnectionServiceRepository repository,
-            ContactsAsyncHelper contactsAsyncHelper,
-            CallerInfoAsyncQueryFactory callerInfoAsyncQueryFactory,
             PhoneNumberUtilsAdapter phoneNumberUtilsAdapter,
             Uri handle,
             GatewayInfo gatewayInfo,
@@ -622,8 +630,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             long connectTimeMillis,
             long connectElapsedTimeMillis,
             ClockProxy clockProxy) {
-        this(callId, context, callsManager, lock, repository, contactsAsyncHelper,
-                callerInfoAsyncQueryFactory, phoneNumberUtilsAdapter, handle, gatewayInfo,
+        this(callId, context, callsManager, lock, repository,
+                phoneNumberUtilsAdapter, handle, gatewayInfo,
                 connectionManagerPhoneAccountHandle, targetPhoneAccountHandle, callDirection,
                 shouldAttachToExistingConnection, isConference, clockProxy);
 
@@ -677,6 +685,7 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
             mCallerInfo.cachedPhotoIcon = null;
             mCallerInfo.cachedPhoto = null;
         }
+        closeRttStreams();
 
         Log.addEvent(this, LogUtils.Events.DESTROYED);
     }
@@ -1470,7 +1479,6 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
                         "capable when not supported by the phone account.");
                 connectionCapabilities = removeVideoCapabilities(connectionCapabilities);
             }
-
             int previousCapabilities = mConnectionCapabilities;
             mConnectionCapabilities = connectionCapabilities;
             for (Listener l : mListeners) {
@@ -3114,6 +3122,20 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     }
 
     /**
+     * Sets whether this {@link Call} is a conference or not.
+     * @param isConference
+     */
+    public void setConferenceState(boolean isConference) {
+        mIsConference = isConference;
+        Log.addEvent(this, LogUtils.Events.CONF_STATE_CHANGED, "isConference=" + isConference);
+        // Ultimately CallsManager needs to know so it can update the "add call" state and inform
+        // the UI to update itself.
+        for (Listener l : mListeners) {
+            l.onConferenceStateChanged(this, isConference);
+        }
+    }
+
+    /**
      * Sets the video history based on the state and state transitions of the call. Always add the
      * current video state to the video state history during a call transition except for the
      * transitions DIALING->ACTIVE and RINGING->ANSWERED. In these cases, clear the history. If a
@@ -3140,5 +3162,28 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
 
     public void setIsUsingCallFiltering(boolean isUsingCallFiltering) {
         mIsUsingCallFiltering = isUsingCallFiltering;
+    }
+
+    /**
+     * Update the {@link CallIdentification} for a call.
+     * @param callIdentification the {@link CallIdentification}.
+     */
+    public void setCallIdentification(CallIdentification callIdentification) {
+        if (callIdentification != null) {
+            Log.addEvent(this, LogUtils.Events.CALL_IDENTIFICATION_SET,
+                    callIdentification.getCallScreeningPackageName());
+        }
+        mCallIdentification = callIdentification;
+
+        for (Listener l : mListeners) {
+            l.onCallIdentificationChanged(this);
+        }
+    }
+
+    /**
+     * @return Call identification returned by a {@link android.telecom.CallScreeningService}.
+     */
+    public CallIdentification getCallIdentification() {
+        return mCallIdentification;
     }
 }

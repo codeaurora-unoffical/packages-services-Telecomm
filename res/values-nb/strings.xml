@@ -83,6 +83,8 @@
     <string name="answering_ends_other_managed_video_call" msgid="1585423762458248435">"Hvis du svarer, avsluttes videosamtalen du er i nå"</string>
     <string name="answer_incoming_call" msgid="4140530013111794587">"Svar"</string>
     <string name="decline_incoming_call" msgid="806026168661598368">"Avvis"</string>
+    <!-- no translation found for cant_call_due_to_no_supported_service (5128162419227548372) -->
+    <skip />
     <string name="cant_call_due_to_ongoing_call" msgid="4952615196237854748">"Kan ikke ringe ut på grunn av <xliff:g id="OTHER_CALL">%1$s</xliff:g>-samtalen din."</string>
     <string name="cant_call_due_to_ongoing_calls" msgid="1380804892363503856">"Kan ikke ringe ut på grunn av <xliff:g id="OTHER_CALL">%1$s</xliff:g>-samtalene dine."</string>
     <string name="cant_call_due_to_ongoing_unknown_call" msgid="149091978697302211">"Kan ikke ringe ut på grunn av en samtale i en annen app."</string>
@@ -90,6 +92,8 @@
     <string name="notification_channel_missed_call" msgid="8727062678632713146">"Tapte anrop"</string>
     <string name="notification_channel_call_blocking" msgid="2943358779746676070">"Anropsblokkering"</string>
     <string name="alert_outgoing_call" msgid="982908156825958001">"Samtalen din i <xliff:g id="OTHER_APP">%1$s</xliff:g> avsluttes hvis du foretar dette anropet."</string>
+    <string name="alert_redirect_outgoing_call" msgid="1267579501303765238">"Tillat <xliff:g id="OTHER_APP">%1$s</xliff:g> å utføre anrop med et annet nummer eller en annen konto."</string>
+    <string name="alert_redirect_outgoing_call_timeout" msgid="7268954889515301158">"Anrop kan ikke utføres av <xliff:g id="OTHER_APP">%1$s</xliff:g>. Prøv å bruke en annen app for viderekobling av anrop eller ta kontakt med utvikleren for å få hjelp."</string>
     <string name="phone_settings_call_blocking_txt" msgid="3976004073043846733">"Anropsblokkering"</string>
     <string name="phone_settings_number_not_in_contact_txt" msgid="3126829421867168652">"Numre som ikke står i Kontakter"</string>
     <string name="phone_settings_number_not_in_contact_summary_txt" msgid="9043147855140079119">"Blokkér numre som ikke står i kontaktene mine"</string>
