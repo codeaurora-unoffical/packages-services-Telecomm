@@ -409,11 +409,14 @@ public class TelecomServiceImpl {
             try {
                 Log.startSession("TSI.rPA");
                 synchronized (mLock) {
-                    if (!mContext.getApplicationContext().getResources().getBoolean(
-                            com.android.internal.R.bool.config_voice_capable)) {
-                        Log.w(this,
+                    if (!mContext.getPackageManager()
+                        .hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)) {
+                        if (!mContext.getApplicationContext().getResources().getBoolean(
+                                com.android.internal.R.bool.config_voice_capable)) {
+                            Log.w(this,
                                 "registerPhoneAccount not allowed on non-voice capable device.");
-                        return;
+                            return;
+                        }
                     }
                     try {
                         enforcePhoneAccountModificationForPackage(

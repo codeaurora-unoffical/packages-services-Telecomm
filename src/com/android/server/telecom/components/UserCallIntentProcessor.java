@@ -19,6 +19,7 @@ package com.android.server.telecom.components;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -82,8 +83,10 @@ public class UserCallIntentProcessor {
     public void processIntent(Intent intent, String callingPackageName,
             boolean canCallNonEmergency, boolean isLocalInvocation) {
         // Ensure call intents are not processed on devices that are not capable of calling.
-        if (!isVoiceCapable()) {
-            return;
+        if (!mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)) {
+            if (!isVoiceCapable()) {
+                return;
+            }
         }
 
         String action = intent.getAction();
