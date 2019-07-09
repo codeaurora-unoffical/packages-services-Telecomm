@@ -2945,6 +2945,8 @@ public class CallsManager extends Call.ListenerBase
 
         setCallState(call, Call.getStateFromConnectionState(parcelableConference.getState()),
                 "new conference call");
+        call.setHandle(parcelableConference.getHandle(),
+                parcelableConference.getHandlePresentation());
         call.setConnectionCapabilities(parcelableConference.getConnectionCapabilities());
         call.setConnectionProperties(parcelableConference.getConnectionProperties());
         call.setVideoState(parcelableConference.getVideoState());
@@ -3663,7 +3665,7 @@ public class CallsManager extends Call.ListenerBase
                 null /* gatewayInfo */,
                 null /* connectionManagerPhoneAccount */,
                 connection.getPhoneAccount(), /* targetPhoneAccountHandle */
-                Call.CALL_DIRECTION_UNDEFINED /* callDirection */,
+                Call.getRemappedCallDirection(connection.getCallDirection()) /* callDirection */,
                 false /* forceAttachToExistingConnection */,
                 isDowngradedConference /* isConference */,
                 connection.getConnectTimeMillis() /* connectTimeMillis */,
